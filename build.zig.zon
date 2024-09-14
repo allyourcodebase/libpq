@@ -1,0 +1,19 @@
+.{
+    .name = "libpq",
+    .version = "5.16.4",
+    .dependencies = .{
+        .upstream = .{
+            .url = "git+https://github.com/postgres/postgres?ref=REL_16_4#2caa85f4aae689e6f6721d7363b4c66a2a6417d6",
+            .hash = "12208ab2a51009911223b33e470daffb5214d5b4c7479492fa9c7a4a6d7163b16d53",
+        },
+        .openssl = .{
+            .url = "git+https://github.com/allyourcodebase/openssl?ref=3.3.0#37f44e18975205c8111fec16b896c2f937667465",
+            .hash = "12200078346510dd1010ac11cf1d46b0e51cda1b3c80f3b2fb375194f52f70cbf0a0",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "README.md",
+    },
+}
