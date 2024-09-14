@@ -24,14 +24,20 @@ pub fn build(b: *std.Build) !void {
         },
         autoconf,
     );
-    const config_os = b.addConfigHeader(.{
-        .style = .{ .autoconf = upstream.path("src/include/port/linux.h") },
-        .include_path = "pg_config_os.h",
-    }, .{});
-    const config_path = b.addConfigHeader(.{
-        .style = .blank,
-        .include_path = "pg_config_paths.h",
-    }, .{ .SYSCONFDIR = "/usr/local/pgsql/etc" });
+    const config_os = b.addConfigHeader(
+        .{
+            .style = .{ .autoconf = upstream.path("src/include/port/linux.h") },
+            .include_path = "pg_config_os.h",
+        },
+        .{},
+    );
+    const config_path = b.addConfigHeader(
+        .{
+            .style = .blank,
+            .include_path = "pg_config_paths.h",
+        },
+        .{ .SYSCONFDIR = "/usr/local/pgsql/etc" },
+    );
 
     const lib = b.addStaticLibrary(.{
         .name = "pq",
@@ -72,11 +78,25 @@ pub fn build(b: *std.Build) !void {
         "libpq-fe.h",
         "libpq-events.h",
     } });
+    lib.installHeadersDirectory(upstream.path("src/include"), "", .{
+        .include_extensions = &.{
+            "postgres_ext.h",
+            "pg_config_manual.h",
+            "postgres_fe.h",
+        },
+    });
+    lib.installHeadersDirectory(upstream.path("src/include/libpq"), "libpq", .{ .include_extensions = &.{
+        "libpq-fs.h",
+        "pqcomm.h",
+    } });
     lib.installHeadersDirectory(upstream.path(libpq_path), "internal", .{ .include_extensions = &.{
         "libpq-int.h",
         "fe-auth-sasl.h",
         "pqexpbuffer.h",
     } });
+    lib.installConfigHeader(config);
+    lib.installConfigHeader(config_ext);
+    lib.installConfigHeader(config_os);
     lib.linkLibrary(openssl.artifact("openssl"));
     b.installArtifact(lib);
 }
@@ -86,13 +106,7 @@ const CFLAGS = .{
     "-fno-strict-aliasing",
     "-fexcess-precision=standard",
 
-    "-Wno-unused-command-line-argument",
-    "-Wno-compound-token-split-by-macro",
-    "-Wno-format-truncation",
-    "-Wno-cast-function-type-strict",
-    //"-Wno-declaration-after-statement",
-
-    //"-Werror",
+    "-Werror",
     "-Wall",
     "-Wmissing-prototypes",
     "-Wpointer-arith",
@@ -101,7 +115,6 @@ const CFLAGS = .{
     "-Wunguarded-availability-new",
     "-Wendif-labels",
     "-Wmissing-format-attribute",
-    "-Wcast-function-type",
     "-Wformat-security",
 };
 
