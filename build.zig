@@ -9,6 +9,7 @@ pub fn build(b: *std.Build) !void {
 
     const upstream = b.dependency("upstream", .{ .target = target, .optimize = optimize });
     const openssl = b.dependency("openssl", .{ .target = target, .optimize = optimize });
+    const openssllib = openssl.artifact("openssl");
 
     const config_ext = b.addConfigHeader(.{
         .style = .{ .autoconf = upstream.path("src/include/pg_config_ext.h.in") },
@@ -85,7 +86,7 @@ pub fn build(b: *std.Build) !void {
     lib.installConfigHeader(config);
     lib.installConfigHeader(config_ext);
     lib.installConfigHeader(config_os);
-    lib.linkLibrary(openssl.artifact("openssl"));
+    lib.linkLibrary(openssllib);
     b.installArtifact(lib);
 
     const portlib = b.addStaticLibrary(.{
@@ -130,7 +131,71 @@ pub fn build(b: *std.Build) !void {
         },
         .flags = &CFLAGS,
     });
+    portlib.linkLibrary(openssllib);
     b.installArtifact(portlib);
+
+    const common = b.addStaticLibrary(.{
+        .name = "pgcommon",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    common.root_module.addCMacro("_GNU_SOURCE", "1");
+    common.root_module.addCMacro("FRONTEND", "1");
+    common.addIncludePath(upstream.path("src/include"));
+    common.addIncludePath(b.path("include"));
+    common.addConfigHeader(config_ext);
+    common.addConfigHeader(config);
+    common.addConfigHeader(config_os);
+    common.addConfigHeader(config_path);
+    common.addCSourceFiles(.{
+        .root = upstream.path("src/common"),
+        .files = &.{
+            "archive.c",
+            "base64.c",
+            "checksum_helper.c",
+            "compression.c",
+            "config_info.c",
+            "controldata_utils.c",
+            "d2s.c",
+            "encnames.c",
+            "exec.c",
+            "f2s.c",
+            "file_perm.c",
+            "file_utils.c",
+            "hashfn.c",
+            "ip.c",
+            "jsonapi.c",
+            "keywords.c",
+            "kwlookup.c",
+            "link-canary.c",
+            "md5_common.c",
+            "percentrepl.c",
+            "pg_get_line.c",
+            "pg_lzcompress.c",
+            "pg_prng.c",
+            "pgfnames.c",
+            "psprintf.c",
+            "relpath.c",
+            "rmtree.c",
+            "saslprep.c",
+            "scram-common.c",
+            "string.c",
+            "stringinfo.c",
+            "unicode_norm.c",
+            "username.c",
+            "wait_error.c",
+            "wchar.c",
+
+            // with openssl:
+            "cryptohash_openssl.c",
+            "hmac_openssl.c",
+            "protocol_openssl.c",
+        },
+        .flags = &CFLAGS,
+    });
+    common.linkLibrary(openssllib);
+    b.installArtifact(common);
 
     const test_step = b.step("examples", "Build example programs");
     const test1 = b.addExecutable(.{
@@ -142,6 +207,7 @@ pub fn build(b: *std.Build) !void {
     test1.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
     test1.linkLibrary(lib);
     test1.linkLibrary(portlib);
+    test1.linkLibrary(common);
     const install_test1 = b.addInstallArtifact(test1, .{});
     test_step.dependOn(&install_test1.step);
 }
@@ -189,6 +255,8 @@ const autoconf = .{
     .HAVE_OPENSSL_INIT_SSL = 1,
     .OPENSSL_API_COMPAT = .@"0x10001000L",
     .HAVE_BIO_METH_NEW = 1,
+    .HAVE_HMAC_CTX_FREE = 1,
+    .HAVE_HMAC_CTX_NEW = 1,
 
     .ALIGNOF_DOUBLE = @alignOf(f64),
     .ALIGNOF_INT = @alignOf(c_int),
@@ -363,8 +431,6 @@ const autoconf = .{
     .HAVE_GSSAPI_GSSAPI_H = null,
     .HAVE_GSSAPI_H = null,
     .HAVE_HISTORY_H = null,
-    .HAVE_HMAC_CTX_FREE = null,
-    .HAVE_HMAC_CTX_NEW = null,
     .HAVE_INT64 = null,
     .HAVE_INT8 = null,
     .HAVE_INT_OPTRESET = null,

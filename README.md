@@ -6,4 +6,4 @@ Provides a package to be used by the zig package manager for C programs.
 
 - [x] libpq.a
 - [x] libpgport.a
-- [ ] libpgcommon.a
+- [x] libpgcommon.a
