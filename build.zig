@@ -10,34 +10,22 @@ pub fn build(b: *std.Build) !void {
     const upstream = b.dependency("upstream", .{ .target = target, .optimize = optimize });
     const openssl = b.dependency("openssl", .{ .target = target, .optimize = optimize });
 
-    const config_ext = b.addConfigHeader(
-        .{
-            .style = .{ .autoconf = upstream.path("src/include/pg_config_ext.h.in") },
-            .include_path = "pg_config_ext.h",
-        },
-        .{ .PG_INT64_TYPE = .@"long int" },
-    );
-    const config = b.addConfigHeader(
-        .{
-            .style = .{ .autoconf = upstream.path("src/include/pg_config.h.in") },
-            .include_path = "pg_config.h",
-        },
-        autoconf,
-    );
-    const config_os = b.addConfigHeader(
-        .{
-            .style = .{ .autoconf = upstream.path("src/include/port/linux.h") },
-            .include_path = "pg_config_os.h",
-        },
-        .{},
-    );
-    const config_path = b.addConfigHeader(
-        .{
-            .style = .blank,
-            .include_path = "pg_config_paths.h",
-        },
-        .{ .SYSCONFDIR = "/usr/local/pgsql/etc" },
-    );
+    const config_ext = b.addConfigHeader(.{
+        .style = .{ .autoconf = upstream.path("src/include/pg_config_ext.h.in") },
+        .include_path = "pg_config_ext.h",
+    }, .{ .PG_INT64_TYPE = .@"long int" });
+    const config = b.addConfigHeader(.{
+        .style = .{ .autoconf = upstream.path("src/include/pg_config.h.in") },
+        .include_path = "pg_config.h",
+    }, autoconf);
+    const config_os = b.addConfigHeader(.{
+        .style = .{ .autoconf = upstream.path("src/include/port/linux.h") },
+        .include_path = "pg_config_os.h",
+    }, .{});
+    const config_path = b.addConfigHeader(.{
+        .style = .blank,
+        .include_path = "pg_config_paths.h",
+    }, default_paths);
 
     const lib = b.addStaticLibrary(.{
         .name = "pq",
@@ -99,6 +87,63 @@ pub fn build(b: *std.Build) !void {
     lib.installConfigHeader(config_os);
     lib.linkLibrary(openssl.artifact("openssl"));
     b.installArtifact(lib);
+
+    const portlib = b.addStaticLibrary(.{
+        .name = "pgport",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    portlib.root_module.addCMacro("_GNU_SOURCE", "1");
+    portlib.root_module.addCMacro("FRONTEND", "1");
+    portlib.addIncludePath(upstream.path("src/include"));
+    portlib.addIncludePath(b.path("include"));
+    portlib.addConfigHeader(config_ext);
+    portlib.addConfigHeader(config);
+    portlib.addConfigHeader(config_os);
+    portlib.addConfigHeader(config_path);
+    portlib.addCSourceFiles(.{
+        .root = upstream.path("src/port"),
+        .files = &.{
+            "getpeereid.c",
+            "pg_crc32c_sb8.c",
+            "bsearch_arg.c",
+            "chklocale.c",
+            "inet_net_ntop.c",
+            "noblock.c",
+            "path.c",
+            "pg_bitutils.c",
+            "pg_strong_random.c",
+            "pgcheckdir.c",
+            "pgmkdirp.c",
+            "pgsleep.c",
+            "pgstrcasecmp.c",
+            "pgstrsignal.c",
+            "pqsignal.c",
+            "qsort.c",
+            "qsort_arg.c",
+            "quotes.c",
+            "snprintf.c",
+            "strerror.c",
+            "tar.c",
+            "thread.c",
+        },
+        .flags = &CFLAGS,
+    });
+    b.installArtifact(portlib);
+
+    const test_step = b.step("examples", "Build example programs");
+    const test1 = b.addExecutable(.{
+        .name = "testlibpq",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    test1.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
+    test1.linkLibrary(lib);
+    test1.linkLibrary(portlib);
+    const install_test1 = b.addInstallArtifact(test1, .{});
+    test_step.dependOn(&install_test1.step);
 }
 
 const CFLAGS = .{
@@ -106,7 +151,12 @@ const CFLAGS = .{
     "-fno-strict-aliasing",
     "-fexcess-precision=standard",
 
-    "-Werror",
+    "-Wno-unused-command-line-argument",
+    "-Wno-compound-token-split-by-macro",
+    "-Wno-format-truncation",
+    "-Wno-cast-function-type-strict",
+
+    //"-Werror",
     "-Wall",
     "-Wmissing-prototypes",
     "-Wpointer-arith",
@@ -116,6 +166,21 @@ const CFLAGS = .{
     "-Wendif-labels",
     "-Wmissing-format-attribute",
     "-Wformat-security",
+};
+
+const default_paths = .{
+    .PGBINDIR = "/usr/local/pgsql/bin",
+    .PGSHAREDIR = "/usr/local/pgsql/share",
+    .SYSCONFDIR = "/usr/local/pgsql/etc",
+    .INCLUDEDIR = "/usr/local/pgsql/include",
+    .PKGINCLUDEDIR = "/usr/local/pgsql/include",
+    .INCLUDEDIRSERVER = "/usr/local/pgsql/include/server",
+    .LIBDIR = "/usr/local/pgsql/lib",
+    .PKGLIBDIR = "/usr/local/pgsql/lib",
+    .LOCALEDIR = "/usr/local/pgsql/share/locale",
+    .DOCDIR = "/usr/local/pgsql/share/doc/",
+    .HTMLDIR = "/usr/local/pgsql/share/doc/",
+    .MANDIR = "/usr/local/pgsql/share/man",
 };
 
 const autoconf = .{
@@ -350,7 +415,7 @@ const autoconf = .{
     .LOCALE_T_IN_XLOCALE = null,
     .PROFILE_PID_DIR = null,
     .PTHREAD_CREATE_JOINABLE = null,
-    .STRERROR_R_INT = null,
+    .STRERROR_R_INT = null, // 1 if not _GNU_SOURCE
     .USE_ARMV8_CRC32C = null,
     .USE_ARMV8_CRC32C_WITH_RUNTIME_CHECK = null,
     .USE_ASSERT_CHECKING = null,
