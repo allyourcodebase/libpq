@@ -128,6 +128,10 @@ pub fn build(b: *std.Build) !void {
             "strerror.c",
             "tar.c",
             "thread.c",
+
+            // glibc < 2.38
+            "strlcat.c",
+            "strlcpy.c",
         },
         .flags = &CFLAGS,
     });
@@ -346,8 +350,6 @@ const autoconf = .{
     .HAVE_DECL_POSIX_FADVISE = 1,
     .HAVE_DECL_PREADV = 1,
     .HAVE_DECL_PWRITEV = 1,
-    .HAVE_DECL_STRLCAT = 1,
-    .HAVE_DECL_STRLCPY = 1,
     .HAVE_DECL_STRNLEN = 1,
     .HAVE_EXECINFO_H = 1,
     .HAVE_EXPLICIT_BZERO = 1,
@@ -401,8 +403,6 @@ const autoconf = .{
     .HAVE_STRERROR_R = 1,
     .HAVE_STRINGS_H = 1,
     .HAVE_STRING_H = 1,
-    .HAVE_STRLCAT = 1,
-    .HAVE_STRLCPY = 1,
     .HAVE_STRNLEN = 1,
     .HAVE_STRSIGNAL = 1,
     .HAVE_STRUCT_OPTION = 1,
@@ -467,6 +467,9 @@ const autoconf = .{
     .PG_VERSION = std.fmt.comptimePrint("{}.{}", .{ version.major, version.minor }),
     .PG_VERSION_STR = std.fmt.comptimePrint("PostgreSQL {}.{}", .{ version.major, version.minor }),
 
+    .HAVE_DECL_STRLCAT = 0,
+    .HAVE_DECL_STRLCPY = 0,
+
     .AC_APPLE_UNIVERSAL_BUILD = null,
     .ALIGNOF_LONG_LONG_INT = null,
     .ENABLE_GSS = null,
@@ -515,6 +518,8 @@ const autoconf = .{
     .HAVE_SECURITY_PAM_APPL_H = null,
     .HAVE_SETPROCTITLE = null,
     .HAVE_SETPROCTITLE_FAST = null,
+    .HAVE_STRLCAT = null,
+    .HAVE_STRLCPY = null,
     .HAVE_STRUCT_SOCKADDR_SA_LEN = null,
     .HAVE_SYS_EVENT_H = null,
     .HAVE_SYS_PROCCTL_H = null,
