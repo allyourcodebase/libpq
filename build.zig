@@ -197,7 +197,6 @@ pub fn build(b: *std.Build) !void {
     common.linkLibrary(openssllib);
     b.installArtifact(common);
 
-    const test_step = b.step("examples", "Build example programs");
     const test1 = b.addExecutable(.{
         .name = "testlibpq",
         .target = target,
@@ -208,8 +207,62 @@ pub fn build(b: *std.Build) !void {
     test1.linkLibrary(lib);
     test1.linkLibrary(portlib);
     test1.linkLibrary(common);
+
+    const test2 = b.addExecutable(.{
+        .name = "testlibpq2",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    test2.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq2.c"} });
+    test2.linkLibrary(lib);
+    test2.linkLibrary(portlib);
+    test2.linkLibrary(common);
+
+    const test3 = b.addExecutable(.{
+        .name = "testlibpq3",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    test3.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq3.c"} });
+    test3.linkLibrary(lib);
+    test3.linkLibrary(portlib);
+    test3.linkLibrary(common);
+
+    const test4 = b.addExecutable(.{
+        .name = "testlibpq4",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    test4.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq4.c"} });
+    test4.linkLibrary(lib);
+    test4.linkLibrary(portlib);
+    test4.linkLibrary(common);
+
+    const test5 = b.addExecutable(.{
+        .name = "testlo",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    test5.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo.c"} });
+    test5.linkLibrary(lib);
+    test5.linkLibrary(portlib);
+    test5.linkLibrary(common);
+
+    const test_step = b.step("examples", "Build example programs");
     const install_test1 = b.addInstallArtifact(test1, .{});
+    const install_test2 = b.addInstallArtifact(test2, .{});
+    const install_test3 = b.addInstallArtifact(test3, .{});
+    const install_test4 = b.addInstallArtifact(test4, .{});
+    const install_test5 = b.addInstallArtifact(test5, .{});
     test_step.dependOn(&install_test1.step);
+    test_step.dependOn(&install_test2.step);
+    test_step.dependOn(&install_test3.step);
+    test_step.dependOn(&install_test4.step);
+    test_step.dependOn(&install_test5.step);
 }
 
 const CFLAGS = .{
