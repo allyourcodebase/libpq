@@ -7,271 +7,334 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const disable_ssl = b.option(bool, "disable-ssl", "Remove OpenSSL as a dependency and disallow encrypted communications") orelse false;
+    const disable_zlib = b.option(bool, "disable-zlib", "Remove zlib as a dependency") orelse false;
+    const disable_zstd = b.option(bool, "disable-zstd", "Remove zstd as a dependency") orelse false;
+
     const upstream = b.dependency("upstream", .{ .target = target, .optimize = optimize });
-    const openssl = b.dependency("openssl", .{ .target = target, .optimize = optimize });
-    const zlib_dep = b.dependency("zlib", .{ .target = target, .optimize = optimize });
-    const openssllib = openssl.artifact("openssl");
-    const zlib = zlib_dep.artifact("z");
 
-    const config_ext = b.addConfigHeader(.{
-        .style = .{ .autoconf = upstream.path("src/include/pg_config_ext.h.in") },
-        .include_path = "pg_config_ext.h",
-    }, .{ .PG_INT64_TYPE = .@"long int" });
-    const config = b.addConfigHeader(.{
-        .style = .{ .autoconf = upstream.path("src/include/pg_config.h.in") },
-        .include_path = "pg_config.h",
-    }, autoconf);
-    const config_os = b.addConfigHeader(.{
-        .style = .{ .autoconf = upstream.path("src/include/port/linux.h") },
-        .include_path = "pg_config_os.h",
-    }, .{});
-    const config_path = b.addConfigHeader(.{
-        .style = .blank,
-        .include_path = "pg_config_paths.h",
-    }, default_paths);
+    const config_ext = b.addConfigHeader(
+        .{ .style = .{ .autoconf = upstream.path("src/include/pg_config_ext.h.in") }, .include_path = "pg_config_ext.h" },
+        .{ .PG_INT64_TYPE = .@"long int" },
+    );
+    const pg_config = b.addConfigHeader(
+        .{ .style = .{ .autoconf = upstream.path("src/include/pg_config.h.in") }, .include_path = "pg_config.h" },
+        autoconf,
+    );
+    const config_os = b.addConfigHeader(
+        .{ .style = .{ .autoconf = upstream.path("src/include/port/linux.h") }, .include_path = "pg_config_os.h" },
+        .{},
+    );
+    const config_path = b.addConfigHeader(
+        .{ .style = .blank, .include_path = "pg_config_paths.h" },
+        default_paths,
+    );
 
-    const lib = b.addStaticLibrary(.{
-        .name = "pq",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    lib.addIncludePath(upstream.path(libpq_path));
-    lib.addIncludePath(upstream.path("src/include"));
-    lib.addConfigHeader(config_ext);
-    lib.addConfigHeader(config);
-    lib.addConfigHeader(config_os);
-    lib.addConfigHeader(config_path);
-    lib.addCSourceFiles(.{
+    const libpq = b.addStaticLibrary(.{ .name = "pq", .target = target, .optimize = optimize });
+    const libport = b.addStaticLibrary(.{ .name = "pgport", .target = target, .optimize = optimize });
+    const common = b.addStaticLibrary(.{ .name = "pgcommon", .target = target, .optimize = optimize });
+
+    libpq.addCSourceFiles(.{
         .root = upstream.path(libpq_path),
-        .files = &.{
-            "fe-auth-scram.c",
-            "fe-connect.c",
-            "fe-exec.c",
-            "fe-lobj.c",
-            "fe-misc.c",
-            "fe-print.c",
-            "fe-protocol3.c",
-            "fe-secure.c",
-            "fe-trace.c",
-            "legacy-pqsignal.c",
-            "libpq-events.c",
-            "pqexpbuffer.c",
-            "fe-auth.c",
-
-            // Only with SSL:
-            "fe-secure-common.c",
-            "fe-secure-openssl.c",
-        },
+        .files = &libpq_sources,
         .flags = &CFLAGS,
     });
-    lib.installHeadersDirectory(upstream.path(libpq_path), "", .{ .include_extensions = &.{
-        "libpq-fe.h",
-        "libpq-events.h",
-    } });
-    lib.installHeadersDirectory(upstream.path("src/include"), "", .{
-        .include_extensions = &.{
-            "postgres_ext.h",
-            "pg_config_manual.h",
-            "postgres_fe.h",
-        },
-    });
-    lib.installHeadersDirectory(upstream.path("src/include/libpq"), "libpq", .{ .include_extensions = &.{
-        "libpq-fs.h",
-        "pqcomm.h",
-    } });
-    lib.installHeadersDirectory(upstream.path(libpq_path), "internal", .{ .include_extensions = &.{
-        "libpq-int.h",
-        "fe-auth-sasl.h",
-        "pqexpbuffer.h",
-    } });
-    lib.installConfigHeader(config);
-    lib.installConfigHeader(config_ext);
-    lib.installConfigHeader(config_os);
-    lib.linkLibrary(openssllib);
-    lib.linkLibrary(zlib);
-    b.installArtifact(lib);
-
-    const portlib = b.addStaticLibrary(.{
-        .name = "pgport",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    portlib.root_module.addCMacro("_GNU_SOURCE", "1");
-    portlib.root_module.addCMacro("FRONTEND", "1");
-    portlib.addIncludePath(upstream.path("src/include"));
-    portlib.addIncludePath(b.path("include"));
-    portlib.addConfigHeader(config_ext);
-    portlib.addConfigHeader(config);
-    portlib.addConfigHeader(config_os);
-    portlib.addConfigHeader(config_path);
-    portlib.addCSourceFiles(.{
+    libport.addCSourceFiles(.{
         .root = upstream.path("src/port"),
-        .files = &.{
-            "getpeereid.c",
-            "pg_crc32c_sb8.c",
-            "bsearch_arg.c",
-            "chklocale.c",
-            "inet_net_ntop.c",
-            "noblock.c",
-            "path.c",
-            "pg_bitutils.c",
-            "pg_strong_random.c",
-            "pgcheckdir.c",
-            "pgmkdirp.c",
-            "pgsleep.c",
-            "pgstrcasecmp.c",
-            "pgstrsignal.c",
-            "pqsignal.c",
-            "qsort.c",
-            "qsort_arg.c",
-            "quotes.c",
-            "snprintf.c",
-            "strerror.c",
-            "tar.c",
-            "thread.c",
-
-            // glibc < 2.38
-            "strlcat.c",
-            "strlcpy.c",
-        },
+        .files = &libport_sources,
         .flags = &CFLAGS,
     });
-    portlib.linkLibrary(openssllib);
-    b.installArtifact(portlib);
-
-    const common = b.addStaticLibrary(.{
-        .name = "pgcommon",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    common.root_module.addCMacro("_GNU_SOURCE", "1");
-    common.root_module.addCMacro("FRONTEND", "1");
-    common.addIncludePath(upstream.path("src/include"));
-    common.addIncludePath(b.path("include"));
-    common.addConfigHeader(config_ext);
-    common.addConfigHeader(config);
-    common.addConfigHeader(config_os);
-    common.addConfigHeader(config_path);
     common.addCSourceFiles(.{
         .root = upstream.path("src/common"),
-        .files = &.{
-            "archive.c",
-            "base64.c",
-            "checksum_helper.c",
-            "compression.c",
-            "config_info.c",
-            "controldata_utils.c",
-            "d2s.c",
-            "encnames.c",
-            "exec.c",
-            "f2s.c",
-            "file_perm.c",
-            "file_utils.c",
-            "hashfn.c",
-            "ip.c",
-            "jsonapi.c",
-            "keywords.c",
-            "kwlookup.c",
-            "link-canary.c",
-            "md5_common.c",
-            "percentrepl.c",
-            "pg_get_line.c",
-            "pg_lzcompress.c",
-            "pg_prng.c",
-            "pgfnames.c",
-            "psprintf.c",
-            "relpath.c",
-            "rmtree.c",
-            "saslprep.c",
-            "scram-common.c",
-            "string.c",
-            "stringinfo.c",
-            "unicode_norm.c",
-            "username.c",
-            "wait_error.c",
-            "wchar.c",
-
-            // with openssl:
-            "cryptohash_openssl.c",
-            "hmac_openssl.c",
-            "protocol_openssl.c",
-        },
+        .files = &common_sources,
         .flags = &CFLAGS,
     });
-    common.linkLibrary(openssllib);
-    common.linkLibrary(zlib);
-    b.installArtifact(common);
 
-    const test1 = b.addExecutable(.{
-        .name = "testlibpq",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    test1.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
-    test1.linkLibrary(lib);
-    test1.linkLibrary(portlib);
-    test1.linkLibrary(common);
+    const config_headers = [_]*std.Build.Step.ConfigHeader{ config_ext, pg_config, config_os };
+    const libs = [_]*std.Build.Step.Compile{ libpq, libport, common };
 
-    const test2 = b.addExecutable(.{
-        .name = "testlibpq2",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    test2.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq2.c"} });
-    test2.linkLibrary(lib);
-    test2.linkLibrary(portlib);
-    test2.linkLibrary(common);
+    for (libs) |lib| {
+        lib.addIncludePath(upstream.path("src/include"));
+        lib.addIncludePath(b.path("include"));
+        lib.addConfigHeader(config_path);
+        lib.root_module.addCMacro("_GNU_SOURCE", "1");
+        lib.root_module.addCMacro("FRONTEND", "1");
+        lib.linkLibC();
+        b.installArtifact(lib);
+    }
+    for (config_headers) |header| {
+        for (libs) |lib| {
+            lib.addConfigHeader(header);
+        }
+        common.installConfigHeader(header);
+    }
 
-    const test3 = b.addExecutable(.{
-        .name = "testlibpq3",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    test3.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq3.c"} });
-    test3.linkLibrary(lib);
-    test3.linkLibrary(portlib);
-    test3.linkLibrary(common);
+    if (!disable_ssl) {
+        if (b.lazyDependency("openssl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
+            const openssl = openssl_dep.artifact("openssl");
+            for (libs) |lib| {
+                lib.linkLibrary(openssl);
+            }
+        }
+        libpq.addCSourceFiles(.{
+            .root = upstream.path(libpq_path),
+            .files = &.{
+                "fe-secure-common.c",
+                "fe-secure-openssl.c",
+            },
+            .flags = &CFLAGS,
+        });
+        common.addCSourceFiles(.{
+            .root = upstream.path("src/common"),
+            .files = &.{
+                "cryptohash_openssl.c",
+                "hmac_openssl.c",
+                "protocol_openssl.c",
+            },
+            .flags = &CFLAGS,
+        });
+        pg_config.addValues(.{
+            .USE_OPENSSL = 1,
+            .OPENSSL_API_COMPAT = .@"0x10001000L",
+            .HAVE_LIBCRYPTO = 1,
+            .HAVE_LIBSSL = 1,
+            .HAVE_OPENSSL_INIT_SSL = 1,
+            .HAVE_SSL_CTX_SET_CERT_CB = 1,
+            .HAVE_SSL_CTX_SET_NUM_TICKETS = 1,
+            .HAVE_X509_GET_SIGNATURE_INFO = 1,
+            .HAVE_X509_GET_SIGNATURE_NID = 1,
+            .HAVE_BIO_METH_NEW = 1,
+            .HAVE_HMAC_CTX_FREE = 1,
+            .HAVE_HMAC_CTX_NEW = 1,
+            .HAVE_ASN1_STRING_GET0_DATA = 1,
+        });
+    } else {
+        common.addCSourceFiles(.{
+            .root = upstream.path("src/common"),
+            .files = &.{
+                "cryptohash.c",
+                "hmac.c",
+                "md5.c",
+                "sha1.c",
+                "sha2.c",
+            },
+            .flags = &CFLAGS,
+        });
+        pg_config.addValues(.{
+            .USE_OPENSSL = null,
+            .OPENSSL_API_COMPAT = null,
+            .HAVE_LIBCRYPTO = null,
+            .HAVE_LIBSSL = null,
+            .HAVE_OPENSSL_INIT_SSL = null,
+            .HAVE_SSL_CTX_SET_CERT_CB = null,
+            .HAVE_SSL_CTX_SET_NUM_TICKETS = null,
+            .HAVE_X509_GET_SIGNATURE_INFO = null,
+            .HAVE_X509_GET_SIGNATURE_NID = null,
+            .HAVE_BIO_METH_NEW = null,
+            .HAVE_HMAC_CTX_FREE = null,
+            .HAVE_HMAC_CTX_NEW = null,
+            .HAVE_ASN1_STRING_GET0_DATA = null,
+        });
+    }
 
-    const test4 = b.addExecutable(.{
-        .name = "testlibpq4",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    test4.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq4.c"} });
-    test4.linkLibrary(lib);
-    test4.linkLibrary(portlib);
-    test4.linkLibrary(common);
+    if (!disable_zlib) {
+        if (b.lazyDependency("zlib", .{ .target = target, .optimize = optimize })) |zlib_dep| {
+            const zlib = zlib_dep.artifact("z");
+            for (libs) |lib| {
+                lib.linkLibrary(zlib);
+            }
+        }
+        pg_config.addValues(.{ .HAVE_LIBZ = 1 });
+    } else {
+        pg_config.addValues(.{ .HAVE_LIBZ = null });
+    }
 
-    const test5 = b.addExecutable(.{
-        .name = "testlo",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    test5.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo.c"} });
-    test5.linkLibrary(lib);
-    test5.linkLibrary(portlib);
-    test5.linkLibrary(common);
+    if (!disable_zstd) {
+        if (b.lazyDependency("zstd", .{ .target = target, .optimize = optimize })) |zstd_dep| {
+            const zstd = zstd_dep.artifact("zstd");
+            for (libs) |lib| {
+                lib.linkLibrary(zstd);
+            }
+        }
+        pg_config.addValues(.{
+            .HAVE_LIBZSTD = 1,
+            .USE_ZSTD = 1,
+        });
+    } else {
+        pg_config.addValues(.{
+            .HAVE_LIBZSTD = null,
+            .USE_ZSTD = null,
+        });
+    }
 
+    // if (target.glibc_version < 2.38) // ???
+    if (true) {
+        libport.addCSourceFiles(.{
+            .root = upstream.path("src/port"),
+            .files = &.{
+                "strlcat.c",
+                "strlcpy.c",
+            },
+            .flags = &CFLAGS,
+        });
+        pg_config.addValues(.{
+            .HAVE_DECL_STRLCAT = 0,
+            .HAVE_DECL_STRLCPY = 0,
+            .HAVE_STRLCAT = null,
+            .HAVE_STRLCPY = null,
+        });
+    } else {
+        pg_config.addValues(.{
+            .HAVE_DECL_STRLCAT = 1,
+            .HAVE_DECL_STRLCPY = 1,
+            .HAVE_STRLCAT = 1,
+            .HAVE_STRLCPY = 1,
+        });
+    }
+
+    // Export public headers
+    libpq.installHeadersDirectory(
+        upstream.path(libpq_path),
+        "",
+        .{ .include_extensions = &.{
+            "libpq-fe.h",
+            "libpq-events.h",
+        } },
+    );
+    libpq.installHeadersDirectory(
+        upstream.path(libpq_path),
+        "internal",
+        .{ .include_extensions = &.{
+            "libpq-int.h",
+            "fe-auth-sasl.h",
+            "pqexpbuffer.h",
+        } },
+    );
+    libpq.installHeadersDirectory(
+        upstream.path("src/include/libpq"),
+        "libpq",
+        .{ .include_extensions = &.{
+            "libpq-fs.h",
+            "pqcomm.h",
+        } },
+    );
+    common.installHeadersDirectory(
+        upstream.path("src/include"),
+        "",
+        .{
+            .include_extensions = &.{
+                "postgres_ext.h",
+                "pg_config_manual.h",
+                "postgres_fe.h",
+            },
+        },
+    );
+    libport.installHeader(upstream.path("src/include/c.h"), "c.h");
+    libport.installHeader(upstream.path("src/include/port.h"), "port.h");
+
+    // Build executables to ensure no symbols are left undefined
     const test_step = b.step("examples", "Build example programs");
-    const install_test1 = b.addInstallArtifact(test1, .{});
-    const install_test2 = b.addInstallArtifact(test2, .{});
-    const install_test3 = b.addInstallArtifact(test3, .{});
-    const install_test4 = b.addInstallArtifact(test4, .{});
-    const install_test5 = b.addInstallArtifact(test5, .{});
-    test_step.dependOn(&install_test1.step);
-    test_step.dependOn(&install_test2.step);
-    test_step.dependOn(&install_test3.step);
-    test_step.dependOn(&install_test4.step);
-    test_step.dependOn(&install_test5.step);
+
+    const test1 = b.addExecutable(.{ .name = "testlibpq", .target = target, .optimize = optimize });
+    const test2 = b.addExecutable(.{ .name = "testlibpq2", .target = target, .optimize = optimize });
+    const test3 = b.addExecutable(.{ .name = "testlibpq3", .target = target, .optimize = optimize });
+    const test4 = b.addExecutable(.{ .name = "testlibpq4", .target = target, .optimize = optimize });
+    const test5 = b.addExecutable(.{ .name = "testlo", .target = target, .optimize = optimize });
+
+    test1.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
+    test2.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq2.c"} });
+    test3.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq3.c"} });
+    test4.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq4.c"} });
+    test5.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo.c"} });
+
+    const tests = [_]*std.Build.Step.Compile{ test1, test2, test3, test4, test5 };
+    for (tests) |t| {
+        t.linkLibC();
+        for (libs) |lib|
+            t.linkLibrary(lib);
+        const install_test = b.addInstallArtifact(t, .{});
+        test_step.dependOn(&install_test.step);
+    }
 }
+
+const libpq_sources = .{
+    "fe-auth-scram.c",
+    "fe-connect.c",
+    "fe-exec.c",
+    "fe-lobj.c",
+    "fe-misc.c",
+    "fe-print.c",
+    "fe-protocol3.c",
+    "fe-secure.c",
+    "fe-trace.c",
+    "legacy-pqsignal.c",
+    "libpq-events.c",
+    "pqexpbuffer.c",
+    "fe-auth.c",
+};
+
+const libport_sources = .{
+    "getpeereid.c",
+    "pg_crc32c_sb8.c",
+    "bsearch_arg.c",
+    "chklocale.c",
+    "inet_net_ntop.c",
+    "noblock.c",
+    "path.c",
+    "pg_bitutils.c",
+    "pg_strong_random.c",
+    "pgcheckdir.c",
+    "pgmkdirp.c",
+    "pgsleep.c",
+    "pgstrcasecmp.c",
+    "pgstrsignal.c",
+    "pqsignal.c",
+    "qsort.c",
+    "qsort_arg.c",
+    "quotes.c",
+    "snprintf.c",
+    "strerror.c",
+    "tar.c",
+    "thread.c",
+};
+
+const common_sources = .{
+    "archive.c",
+    "base64.c",
+    "checksum_helper.c",
+    "compression.c",
+    "config_info.c",
+    "controldata_utils.c",
+    "d2s.c",
+    "encnames.c",
+    "exec.c",
+    "f2s.c",
+    "file_perm.c",
+    "file_utils.c",
+    "hashfn.c",
+    "ip.c",
+    "jsonapi.c",
+    "keywords.c",
+    "kwlookup.c",
+    "link-canary.c",
+    "md5_common.c",
+    "percentrepl.c",
+    "pg_get_line.c",
+    "pg_lzcompress.c",
+    "pg_prng.c",
+    "pgfnames.c",
+    "psprintf.c",
+    "relpath.c",
+    "rmtree.c",
+    "saslprep.c",
+    "scram-common.c",
+    "string.c",
+    "stringinfo.c",
+    "unicode_norm.c",
+    "username.c",
+    "wait_error.c",
+    "wchar.c",
+};
 
 const CFLAGS = .{
     "-fwrapv",
@@ -283,11 +346,10 @@ const CFLAGS = .{
     "-Wno-format-truncation",
     "-Wno-cast-function-type-strict",
 
-    //"-Werror",
+    "-Werror",
     "-Wall",
     "-Wmissing-prototypes",
     "-Wpointer-arith",
-    "-Wdeclaration-after-statement",
     "-Wvla",
     "-Wunguarded-availability-new",
     "-Wendif-labels",
@@ -311,21 +373,6 @@ const default_paths = .{
 };
 
 const autoconf = .{
-    // TODO: add an option
-    .USE_OPENSSL = 1,
-    .OPENSSL_API_COMPAT = .@"0x10001000L",
-    .HAVE_LIBCRYPTO = 1,
-    .HAVE_LIBSSL = 1,
-    .HAVE_OPENSSL_INIT_SSL = 1,
-    .HAVE_SSL_CTX_SET_CERT_CB = 1,
-    .HAVE_SSL_CTX_SET_NUM_TICKETS = 1,
-    .HAVE_X509_GET_SIGNATURE_INFO = 1,
-    .HAVE_X509_GET_SIGNATURE_NID = 1,
-    .HAVE_BIO_METH_NEW = 1,
-    .HAVE_HMAC_CTX_FREE = 1,
-    .HAVE_HMAC_CTX_NEW = 1,
-    .HAVE_ASN1_STRING_GET0_DATA = 1,
-
     .ALIGNOF_DOUBLE = @alignOf(f64),
     .ALIGNOF_INT = @alignOf(c_int),
     .ALIGNOF_LONG = @alignOf(c_long),
@@ -378,7 +425,6 @@ const autoconf = .{
     .HAVE_LANGINFO_H = 1,
     .HAVE_LIBM = 1,
     .HAVE_LIBREADLINE = 1,
-    .HAVE_LIBZ = 1,
     .HAVE_LOCALE_T = 1,
     .HAVE_LONG_INT_64 = 1,
     .HAVE_MEMORY_H = 1,
@@ -471,9 +517,6 @@ const autoconf = .{
     .PG_VERSION = std.fmt.comptimePrint("{}.{}", .{ version.major, version.minor }),
     .PG_VERSION_STR = std.fmt.comptimePrint("PostgreSQL {}.{}", .{ version.major, version.minor }),
 
-    .HAVE_DECL_STRLCAT = 0,
-    .HAVE_DECL_STRLCPY = 0,
-
     .AC_APPLE_UNIVERSAL_BUILD = null,
     .ALIGNOF_LONG_LONG_INT = null,
     .ENABLE_GSS = null,
@@ -510,7 +553,6 @@ const autoconf = .{
     .HAVE_LIBWLDAP32 = null,
     .HAVE_LIBXML2 = null,
     .HAVE_LIBXSLT = null,
-    .HAVE_LIBZSTD = null,
     .HAVE_LONG_LONG_INT_64 = null,
     .HAVE_MBARRIER_H = null,
     .HAVE_MBSTOWCS_L = null,
@@ -522,8 +564,6 @@ const autoconf = .{
     .HAVE_SECURITY_PAM_APPL_H = null,
     .HAVE_SETPROCTITLE = null,
     .HAVE_SETPROCTITLE_FAST = null,
-    .HAVE_STRLCAT = null,
-    .HAVE_STRLCPY = null,
     .HAVE_STRUCT_SOCKADDR_SA_LEN = null,
     .HAVE_SYS_EVENT_H = null,
     .HAVE_SYS_PROCCTL_H = null,
@@ -562,7 +602,6 @@ const autoconf = .{
     .USE_SYSV_SEMAPHORES = null,
     .USE_WIN32_SEMAPHORES = null,
     .USE_WIN32_SHARED_MEMORY = null,
-    .USE_ZSTD = null,
     .WCSTOMBS_L_IN_XLOCALE = null,
     .WORDS_BIGENDIAN = null,
     ._FILE_OFFSET_BITS = null,
