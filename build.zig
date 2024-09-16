@@ -9,7 +9,9 @@ pub fn build(b: *std.Build) !void {
 
     const upstream = b.dependency("upstream", .{ .target = target, .optimize = optimize });
     const openssl = b.dependency("openssl", .{ .target = target, .optimize = optimize });
+    const zlib_dep = b.dependency("zlib", .{ .target = target, .optimize = optimize });
     const openssllib = openssl.artifact("openssl");
+    const zlib = zlib_dep.artifact("z");
 
     const config_ext = b.addConfigHeader(.{
         .style = .{ .autoconf = upstream.path("src/include/pg_config_ext.h.in") },
@@ -87,6 +89,7 @@ pub fn build(b: *std.Build) !void {
     lib.installConfigHeader(config_ext);
     lib.installConfigHeader(config_os);
     lib.linkLibrary(openssllib);
+    lib.linkLibrary(zlib);
     b.installArtifact(lib);
 
     const portlib = b.addStaticLibrary(.{
@@ -199,6 +202,7 @@ pub fn build(b: *std.Build) !void {
         .flags = &CFLAGS,
     });
     common.linkLibrary(openssllib);
+    common.linkLibrary(zlib);
     b.installArtifact(common);
 
     const test1 = b.addExecutable(.{
