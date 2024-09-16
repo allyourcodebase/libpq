@@ -4,11 +4,12 @@ Provides a package to be used by the zig package manager for C programs.
 
 ## Status
 
-For now the only target is linux with openssl.
+For now the only target is linux.
 
-- [x] libpq.a
-- [x] libpgport.a
-- [x] libpgcommon.a
+Optional dependencies used by default:
+- openssl
+- zlib
+- zstd
 
 ## Use
 
