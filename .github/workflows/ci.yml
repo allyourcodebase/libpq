@@ -11,14 +11,31 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        zig-version: ["master", "0.13.0"]
+        os: [ubuntu-latest]
+        build-options: ["-Ddisable-ssl -Ddisable-zlib -Ddisable-zstd"]
+        include:
+          - zig-version: "master"
+            os: ubuntu-latest
+            build-options: ""
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Set up Zig
         uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ matrix.zig-version }}
+          use-cache: false
+
       - name: Run `build`
-        run: zig build
+        run: zig build ${{ matrix.build-options }} --summary all
+
       - name: Build example programs
-        run: zig build examples
+        run: zig build ${{ matrix.build-options }} examples --summary all
