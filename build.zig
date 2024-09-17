@@ -203,34 +203,20 @@ pub fn build(b: *std.Build) !void {
     );
     libpq.installHeadersDirectory(
         upstream.path(libpq_path),
-        "internal",
+        "postgresql/internal",
         .{ .include_extensions = &.{
             "libpq-int.h",
             "fe-auth-sasl.h",
             "pqexpbuffer.h",
         } },
     );
-    libpq.installHeadersDirectory(
-        upstream.path("src/include/libpq"),
-        "libpq",
-        .{ .include_extensions = &.{
-            "libpq-fs.h",
-            "pqcomm.h",
-        } },
-    );
-    common.installHeadersDirectory(
-        upstream.path("src/include"),
-        "",
-        .{
-            .include_extensions = &.{
-                "postgres_ext.h",
-                "pg_config_manual.h",
-                "postgres_fe.h",
-            },
-        },
-    );
-    libport.installHeader(upstream.path("src/include/c.h"), "c.h");
-    libport.installHeader(upstream.path("src/include/port.h"), "port.h");
+    libpq.installHeader(upstream.path("src/include/libpq/libpq-fs.h"), "libpq/libpq-fs.h");
+    libpq.installHeader(upstream.path("src/include/libpq/pqcomm.h"), "postgresql/internal/libpq/pqcomm.h");
+    common.installHeader(upstream.path("src/include/pg_config_manual.h"), "pg_config_manual.h");
+    common.installHeader(upstream.path("src/include/postgres_ext.h"), "postgres_ext.h");
+    common.installHeader(upstream.path("src/include/postgres_fe.h"), "postgresql/internal/postgres_fe.h");
+    libport.installHeader(upstream.path("src/include/c.h"), "postgresql/internal/c.h");
+    libport.installHeader(upstream.path("src/include/port.h"), "postgresql/internal/port.h");
 
     // Build executables to ensure no symbols are left undefined
     const test_step = b.step("examples", "Build example programs");
