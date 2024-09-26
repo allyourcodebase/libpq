@@ -21,6 +21,9 @@ jobs:
           - zig-version: "master"
             os: ubuntu-latest
             build-options: ""
+          - zig-version: "master"
+            os: macos-latest
+            build-options: "-Ddisable-ssl -Ddisable-zstd"
 
     runs-on: ${{ matrix.os }}
 
