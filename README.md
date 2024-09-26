@@ -4,7 +4,10 @@ Provides a package to be used by the zig package manager for C programs.
 
 ## Status
 
-For now the only target is linux.
+| Architecture \ OS | Linux | MacOS                          |
+|:------------------|:------|--------------------------------|
+| x86_64            | ✅    | `-Ddisable-ssl -Ddisable-zstd` |
+| arm 64            | X     | `-Ddisable-ssl -Ddisable-zstd` |
 
 Optional dependencies used by default:
 - openssl
