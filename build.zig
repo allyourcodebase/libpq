@@ -280,6 +280,7 @@ const libpq_sources = .{
 };
 
 const libport_sources = .{
+    "explicit_bzero.c",
     "getpeereid.c",
     "pg_crc32c_sb8.c",
     "bsearch_arg.c",
@@ -801,7 +802,7 @@ const autoconf_darwin = .{
     .HAVE_LONG_LONG_INT_64 = null,
     .HAVE_MBARRIER_H = null,
     .HAVE_MBSTOWCS_L = null,
-    .HAVE_MEMSET_S = 1,
+    .HAVE_MEMSET_S = null,
     .HAVE_OSSP_UUID_H = null,
     .HAVE_PAM_PAM_APPL_H = null,
     .HAVE_PTHREAD_IS_THREADED_NP = null,
@@ -837,7 +838,7 @@ const autoconf_darwin = .{
     .USE_LDAP = null,
     .USE_LIBXML = null,
     .USE_LIBXSLT = null,
-    .USE_LLVM = null,
+    .USE_LLVM = 1,
     .USE_LZ4 = null,
     .USE_NAMED_POSIX_SEMAPHORES = null,
     .USE_PAM = null,
