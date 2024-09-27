@@ -254,7 +254,7 @@ pub fn build(b: *std.Build) !void {
     test5.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo.c"} });
 
     const tests = [_]*std.Build.Step.Compile{ test1, test2, test3, test4, test5 };
-    for (tests) |t| {
+    inline for (tests) |t| {
         t.linkLibC();
         for (libs) |lib|
             t.linkLibrary(lib);
