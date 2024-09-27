@@ -258,8 +258,11 @@ pub fn build(b: *std.Build) !void {
         t.linkLibC();
         for (libs) |lib|
             t.linkLibrary(lib);
+        t.linkLibC();
         const install_test = b.addInstallArtifact(t, .{});
+        const run_test = b.addRunArtifact(t);
         test_step.dependOn(&install_test.step);
+        test_step.dependOn(&run_test.step);
     }
 }
 
