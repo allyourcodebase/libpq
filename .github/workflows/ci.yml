@@ -24,23 +24,6 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-        # Give PostgreSQL some time to start
-        timeout-minutes: 5
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
