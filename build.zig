@@ -37,53 +37,45 @@ pub fn build(b: *std.Build) !void {
         default_paths,
     );
 
-    const libpq = b.addStaticLibrary(.{ .name = "pq", .target = target, .optimize = optimize });
-    const libport = b.addStaticLibrary(.{ .name = "pgport", .target = target, .optimize = optimize });
-    const common = b.addStaticLibrary(.{ .name = "pgcommon", .target = target, .optimize = optimize });
+    const lib = b.addStaticLibrary(.{ .name = "pq", .target = target, .optimize = optimize });
 
-    libpq.addCSourceFiles(.{
+    lib.addCSourceFiles(.{
         .root = upstream.path(libpq_path),
         .files = &libpq_sources,
         .flags = &CFLAGS,
     });
-    libport.addCSourceFiles(.{
+    lib.addCSourceFiles(.{
         .root = upstream.path("src/port"),
         .files = &libport_sources,
         .flags = &CFLAGS,
     });
-    common.addCSourceFiles(.{
+    lib.addCSourceFiles(.{
         .root = upstream.path("src/common"),
         .files = &common_sources,
         .flags = &CFLAGS,
     });
 
     const config_headers = [_]*std.Build.Step.ConfigHeader{ config_ext, pg_config, config_os };
-    const libs = [_]*std.Build.Step.Compile{ libpq, libport, common };
 
-    for (libs) |lib| {
-        lib.addIncludePath(upstream.path("src/include"));
-        lib.addIncludePath(b.path("include"));
-        lib.addConfigHeader(config_path);
-        lib.root_module.addCMacro("_GNU_SOURCE", "1");
-        lib.root_module.addCMacro("FRONTEND", "1");
-        lib.linkLibC();
-        b.installArtifact(lib);
-    }
+    lib.addIncludePath(upstream.path("src/include"));
+    lib.addIncludePath(b.path("include"));
+    lib.addConfigHeader(config_path);
+    lib.root_module.addCMacro("_GNU_SOURCE", "1");
+    lib.root_module.addCMacro("FRONTEND", "1");
+    lib.linkLibC();
+    b.installArtifact(lib);
+
     for (config_headers) |header| {
-        for (libs) |lib| {
-            lib.addConfigHeader(header);
-        }
-        common.installConfigHeader(header);
+        lib.addConfigHeader(header);
+        lib.installConfigHeader(header);
     }
 
     if (!disable_ssl) {
         if (b.lazyDependency("openssl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
             const openssl = openssl_dep.artifact("openssl");
-            for (libs) |lib| {
-                lib.linkLibrary(openssl);
-            }
+            lib.linkLibrary(openssl);
         }
-        libpq.addCSourceFiles(.{
+        lib.addCSourceFiles(.{
             .root = upstream.path(libpq_path),
             .files = &.{
                 "fe-secure-common.c",
@@ -91,7 +83,7 @@ pub fn build(b: *std.Build) !void {
             },
             .flags = &CFLAGS,
         });
-        common.addCSourceFiles(.{
+        lib.addCSourceFiles(.{
             .root = upstream.path("src/common"),
             .files = &.{
                 "cryptohash_openssl.c",
@@ -101,7 +93,7 @@ pub fn build(b: *std.Build) !void {
             .flags = &CFLAGS,
         });
     } else {
-        common.addCSourceFiles(.{
+        lib.addCSourceFiles(.{
             .root = upstream.path("src/common"),
             .files = &.{
                 "cryptohash.c",
@@ -132,10 +124,7 @@ pub fn build(b: *std.Build) !void {
 
     if (!disable_zlib) {
         if (b.lazyDependency("zlib", .{ .target = target, .optimize = optimize })) |zlib_dep| {
-            const zlib = zlib_dep.artifact("z");
-            for (libs) |lib| {
-                lib.linkLibrary(zlib);
-            }
+            lib.linkLibrary(zlib_dep.artifact("z"));
         }
     }
     const use_z: ?u8 = if (disable_zlib) null else 1;
@@ -143,10 +132,7 @@ pub fn build(b: *std.Build) !void {
 
     if (!disable_zstd) {
         if (b.lazyDependency("zstd", .{ .target = target, .optimize = optimize })) |zstd_dep| {
-            const zstd = zstd_dep.artifact("zstd");
-            for (libs) |lib| {
-                lib.linkLibrary(zstd);
-            }
+            lib.linkLibrary(zstd_dep.artifact("zstd"));
         }
     }
     const use_zstd: ?u8 = if (disable_zstd) null else 1;
@@ -157,7 +143,7 @@ pub fn build(b: *std.Build) !void {
 
     const have_strlcat: bool = target.result.os.tag == .macos; // or linux with glibc >= 2.38, how can I test that ?
     if (!have_strlcat) {
-        libport.addCSourceFiles(.{
+        lib.addCSourceFiles(.{
             .root = upstream.path("src/port"),
             .files = &.{
                 "strlcat.c",
@@ -201,14 +187,14 @@ pub fn build(b: *std.Build) !void {
             .HAVE_MEMSET_S = 1,
             .HAVE_SYS_UCRED_H = 1,
         });
-        libport.addCSourceFile(.{
+        lib.addCSourceFile(.{
             .file = upstream.path("src/port/explicit_bzero.c"),
             .flags = &CFLAGS,
         });
     } else return error.ConfigUnknown;
 
     // Export public headers
-    libpq.installHeadersDirectory(
+    lib.installHeadersDirectory(
         upstream.path(libpq_path),
         "",
         .{ .include_extensions = &.{
@@ -216,7 +202,7 @@ pub fn build(b: *std.Build) !void {
             "libpq-events.h",
         } },
     );
-    libpq.installHeadersDirectory(
+    lib.installHeadersDirectory(
         upstream.path(libpq_path),
         "postgresql/internal",
         .{ .include_extensions = &.{
@@ -225,13 +211,13 @@ pub fn build(b: *std.Build) !void {
             "pqexpbuffer.h",
         } },
     );
-    libpq.installHeader(upstream.path("src/include/libpq/libpq-fs.h"), "libpq/libpq-fs.h");
-    libpq.installHeader(upstream.path("src/include/libpq/pqcomm.h"), "postgresql/internal/libpq/pqcomm.h");
-    common.installHeader(upstream.path("src/include/pg_config_manual.h"), "pg_config_manual.h");
-    common.installHeader(upstream.path("src/include/postgres_ext.h"), "postgres_ext.h");
-    common.installHeader(upstream.path("src/include/postgres_fe.h"), "postgresql/internal/postgres_fe.h");
-    libport.installHeader(upstream.path("src/include/c.h"), "postgresql/internal/c.h");
-    libport.installHeader(upstream.path("src/include/port.h"), "postgresql/internal/port.h");
+    lib.installHeader(upstream.path("src/include/libpq/libpq-fs.h"), "libpq/libpq-fs.h");
+    lib.installHeader(upstream.path("src/include/libpq/pqcomm.h"), "postgresql/internal/libpq/pqcomm.h");
+    lib.installHeader(upstream.path("src/include/pg_config_manual.h"), "pg_config_manual.h");
+    lib.installHeader(upstream.path("src/include/postgres_ext.h"), "postgres_ext.h");
+    lib.installHeader(upstream.path("src/include/postgres_fe.h"), "postgresql/internal/postgres_fe.h");
+    lib.installHeader(upstream.path("src/include/c.h"), "postgresql/internal/c.h");
+    lib.installHeader(upstream.path("src/include/port.h"), "postgresql/internal/port.h");
 
     // Build executables to ensure no symbols are left undefined
     const test_step = b.step("examples", "Build example programs");
@@ -251,8 +237,7 @@ pub fn build(b: *std.Build) !void {
     const tests = [_]*std.Build.Step.Compile{ test1, test2, test3, test4, test5 };
     for (tests) |t| {
         t.linkLibC();
-        for (libs) |lib|
-            t.linkLibrary(lib);
+        t.linkLibrary(lib);
         const install_test = b.addInstallArtifact(t, .{});
         test_step.dependOn(&install_test.step);
     }

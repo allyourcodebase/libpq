@@ -25,11 +25,7 @@ Then, in your `build.zig`:
 ```zig
 const postgres = b.dependency("libpq", { .target = target, .optimize = optimize });
 const libpq = postgres.artifact("pq");
-const libpgcommon = postgres.artifact("pgcommon");
-const libpgport = postgres.artifact("pgport");
 
 // wherever needed:
 exe.linkLibrary(libpq);
-exe.linkLibrary(libpgcommon);
-exe.linkLibrary(libpgport);
 ```
