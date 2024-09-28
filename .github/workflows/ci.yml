@@ -21,9 +21,12 @@ jobs:
           - zig-version: "master"
             os: ubuntu-latest
             build-options: ""
+          #- zig-version: "master"
+          #  os: macos-latest # Apple Silicon (M1)
+          #  build-options: "-Ddisable-ssl"
           - zig-version: "master"
-            os: macos-latest
-            build-options: "-Ddisable-ssl -Ddisable-zstd"
+            os: macos-13 # Intel macOS
+            build-options: "-Ddisable-ssl"
 
     runs-on: ${{ matrix.os }}
 
