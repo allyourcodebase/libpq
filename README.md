@@ -6,8 +6,8 @@ Provides a package to be used by the zig package manager for C programs.
 
 | Architecture \ OS | Linux | MacOS             |
 |:------------------|:------|-------------------|
-| x86_64            | ✅    | ?                 |
-| arm 64            | ❌    | ☑️ `-Ddisable-ssl` |
+| x86_64            | ✅    | ☑️ `-Ddisable-ssl` |
+| arm 64            | __?__ | ☑️ `-Ddisable-ssl` |
 
 Optional dependencies used by default:
 - openssl
