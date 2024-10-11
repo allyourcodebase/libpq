@@ -3,6 +3,8 @@ const std = @import("std");
 const version = .{ .major = 16, .minor = 4 };
 const libpq_path = "src/interfaces/libpq";
 
+const ssl_type = enum { OpenSSL, LibreSSL, None };
+
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -14,7 +16,7 @@ pub fn build(b: *std.Build) !void {
         else => return error.OsNotSupported,
     };
 
-    const disable_ssl = b.option(bool, "disable-ssl", "Remove OpenSSL as a dependency and disallow encrypted communications") orelse false;
+    const ssl_option = b.option(ssl_type, "ssl", "Choose which dependency to use for SSL among OpenSSL, LibreSSL and None. Defaults to LibreSSL") orelse .LibreSSL;
     const disable_zlib = b.option(bool, "disable-zlib", "Remove zlib as a dependency") orelse false;
     const disable_zstd = b.option(bool, "disable-zstd", "Remove zstd as a dependency") orelse false;
 
@@ -70,11 +72,45 @@ pub fn build(b: *std.Build) !void {
         lib.installConfigHeader(header);
     }
 
-    if (!disable_ssl) {
-        if (b.lazyDependency("libressl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
-            const openssl = openssl_dep.artifact("ssl");
-            lib.linkLibrary(openssl);
-        }
+    var use_openssl: ?u8 = null;
+    var use_ssl: ?u8 = null;
+
+    switch (ssl_option) {
+        .OpenSSL => {
+            use_ssl = 1;
+            use_openssl = 1;
+            if (b.lazyDependency("openssl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
+                const openssl = openssl_dep.artifact("openssl");
+                lib.linkLibrary(openssl);
+            }
+        },
+        .LibreSSL => {
+            use_ssl = 1;
+            if (b.lazyDependency("libressl", .{ .target = target, .optimize = optimize })) |libressl_dep| {
+                const libressl = libressl_dep.artifact("ssl");
+                lib.linkLibrary(libressl);
+            }
+        },
+        .None => {},
+    }
+
+    pg_config.addValues(.{
+        .USE_OPENSSL = use_ssl,
+        .OPENSSL_API_COMPAT = .@"0x10001000L",
+        .HAVE_LIBCRYPTO = use_ssl,
+        .HAVE_LIBSSL = use_ssl,
+        .HAVE_OPENSSL_INIT_SSL = use_ssl,
+        .HAVE_SSL_CTX_SET_CERT_CB = use_openssl,
+        .HAVE_SSL_CTX_SET_NUM_TICKETS = use_ssl,
+        .HAVE_X509_GET_SIGNATURE_INFO = use_openssl,
+        .HAVE_X509_GET_SIGNATURE_NID = use_ssl,
+        .HAVE_BIO_METH_NEW = use_ssl,
+        .HAVE_HMAC_CTX_FREE = use_ssl,
+        .HAVE_HMAC_CTX_NEW = use_ssl,
+        .HAVE_ASN1_STRING_GET0_DATA = use_ssl,
+    });
+
+    if (ssl_option != .None) {
         lib.addCSourceFiles(.{
             .root = upstream.path(libpq_path),
             .files = &.{
@@ -105,22 +141,6 @@ pub fn build(b: *std.Build) !void {
             .flags = &CFLAGS,
         });
     }
-    const usessl: ?u8 = if (disable_ssl) null else 1;
-    pg_config.addValues(.{
-        .USE_OPENSSL = usessl,
-        .OPENSSL_API_COMPAT = .@"0x10001000L",
-        .HAVE_LIBCRYPTO = usessl,
-        .HAVE_LIBSSL = usessl,
-        .HAVE_OPENSSL_INIT_SSL = usessl,
-        .HAVE_SSL_CTX_SET_CERT_CB = null,
-        .HAVE_SSL_CTX_SET_NUM_TICKETS = usessl,
-        .HAVE_X509_GET_SIGNATURE_INFO = null,
-        .HAVE_X509_GET_SIGNATURE_NID = usessl,
-        .HAVE_BIO_METH_NEW = usessl,
-        .HAVE_HMAC_CTX_FREE = usessl,
-        .HAVE_HMAC_CTX_NEW = usessl,
-        .HAVE_ASN1_STRING_GET0_DATA = usessl,
-    });
 
     if (!disable_zlib) {
         if (b.lazyDependency("zlib", .{ .target = target, .optimize = optimize })) |zlib_dep| {

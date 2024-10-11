@@ -12,8 +12,8 @@
             .lazy = true,
         },
         .libressl = .{
-            .url = "git+https://github.com/allyourcodebase/libressl?ref=3.9.2#a373b82991947b694196ee630bd6a648d71e2b3f",
-            .hash = "1220b1536d43ed8ce79ee05c53929f90b67dd299e61dfa249fa8f476f17eee46a95f",
+            .url = "git+https://github.com/allyourcodebase/libressl?ref=3.9.2+1#02abfefee4e4eda28ce53c637b3c0d204ace8a6d",
+            .hash = "12201f5cc06c88f191696106723797449baacb6ea38b07b6cf31c18c0382a6bea33e",
             .lazy = true,
         },
         .zlib = .{
@@ -22,7 +22,7 @@
             .lazy = true,
         },
         .zstd = .{
-            .url = "git+https://github.com/allyourcodebase/zstd.git?ref=1.5.6-1#3247ffbcbc31f014027a5776a25c4261054e9fe9",
+            .url = "git+https://github.com/allyourcodebase/zstd?ref=1.5.6-1#3247ffbcbc31f014027a5776a25c4261054e9fe9",
             .hash = "12200dbfe91946451bab186f584edbec9f9f7fdbcf818ad984b7182fea655b3c10e3",
             .lazy = true,
         },
