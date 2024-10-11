@@ -71,8 +71,8 @@ pub fn build(b: *std.Build) !void {
     }
 
     if (!disable_ssl) {
-        if (b.lazyDependency("openssl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
-            const openssl = openssl_dep.artifact("openssl");
+        if (b.lazyDependency("libressl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
+            const openssl = openssl_dep.artifact("ssl");
             lib.linkLibrary(openssl);
         }
         lib.addCSourceFiles(.{
@@ -112,9 +112,9 @@ pub fn build(b: *std.Build) !void {
         .HAVE_LIBCRYPTO = usessl,
         .HAVE_LIBSSL = usessl,
         .HAVE_OPENSSL_INIT_SSL = usessl,
-        .HAVE_SSL_CTX_SET_CERT_CB = usessl,
+        .HAVE_SSL_CTX_SET_CERT_CB = null,
         .HAVE_SSL_CTX_SET_NUM_TICKETS = usessl,
-        .HAVE_X509_GET_SIGNATURE_INFO = usessl,
+        .HAVE_X509_GET_SIGNATURE_INFO = null,
         .HAVE_X509_GET_SIGNATURE_NID = usessl,
         .HAVE_BIO_METH_NEW = usessl,
         .HAVE_HMAC_CTX_FREE = usessl,
