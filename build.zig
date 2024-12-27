@@ -62,7 +62,6 @@ pub fn build(b: *std.Build) !void {
     lib.addIncludePath(upstream.path("src/include"));
     lib.addIncludePath(b.path("include"));
     lib.addConfigHeader(config_path);
-    lib.root_module.addCMacro("_GNU_SOURCE", "1");
     lib.root_module.addCMacro("FRONTEND", "1");
     lib.linkLibC();
     b.installArtifact(lib);
@@ -74,6 +73,11 @@ pub fn build(b: *std.Build) !void {
 
     var use_openssl: ?u8 = null;
     var use_ssl: ?u8 = null;
+    var not_gnu: ?u8 = null;
+
+    if (target.result.isGnu()) {
+        lib.root_module.addCMacro("_GNU_SOURCE", "1");
+    } else not_gnu = 1;
 
     switch (ssl_option) {
         .OpenSSL => {
@@ -108,6 +112,7 @@ pub fn build(b: *std.Build) !void {
         .HAVE_HMAC_CTX_FREE = use_ssl,
         .HAVE_HMAC_CTX_NEW = use_ssl,
         .HAVE_ASN1_STRING_GET0_DATA = use_ssl,
+        .STRERROR_R_INT = not_gnu,
     });
 
     if (ssl_option != .None) {
@@ -191,7 +196,6 @@ pub fn build(b: *std.Build) !void {
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = 1,
             .HAVE_STRCHRNUL = 1,
-            .HAVE_STRERROR_R = 1,
             .HAVE_STRINGS_H = 1,
             .HAVE_SYNC_FILE_RANGE = 1,
             .HAVE_MEMSET_S = null,
@@ -201,7 +205,6 @@ pub fn build(b: *std.Build) !void {
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = null,
             .HAVE_STRCHRNUL = null,
-            .HAVE_STRERROR_R = null,
             .HAVE_STRINGS_H = 0,
             .HAVE_SYNC_FILE_RANGE = null,
             .HAVE_MEMSET_S = 1,
@@ -456,6 +459,7 @@ const autoconf = .{
     .HAVE_STDLIB_H = 1,
     .HAVE_STRING_H = 1,
     .HAVE_STRNLEN = 1,
+    .HAVE_STRERROR_R = 1,
     .HAVE_STRSIGNAL = 1,
     .HAVE_STRUCT_OPTION = 1,
     .HAVE_STRUCT_TM_TM_ZONE = 1,
@@ -580,7 +584,6 @@ const autoconf = .{
     .LOCALE_T_IN_XLOCALE = null,
     .PROFILE_PID_DIR = null,
     .PTHREAD_CREATE_JOINABLE = null,
-    .STRERROR_R_INT = null, // 1 if not _GNU_SOURCE
     .USE_ARMV8_CRC32C = null,
     .USE_ARMV8_CRC32C_WITH_RUNTIME_CHECK = null,
     .USE_ASSERT_CHECKING = null,
