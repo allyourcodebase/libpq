@@ -73,11 +73,6 @@ pub fn build(b: *std.Build) !void {
 
     var use_openssl: ?u8 = null;
     var use_ssl: ?u8 = null;
-    var not_gnu: ?u8 = null;
-
-    if (target.result.isGnu()) {
-        lib.root_module.addCMacro("_GNU_SOURCE", "1");
-    } else not_gnu = 1;
 
     switch (ssl_option) {
         .OpenSSL => {
@@ -112,7 +107,6 @@ pub fn build(b: *std.Build) !void {
         .HAVE_HMAC_CTX_FREE = use_ssl,
         .HAVE_HMAC_CTX_NEW = use_ssl,
         .HAVE_ASN1_STRING_GET0_DATA = use_ssl,
-        .STRERROR_R_INT = not_gnu,
     });
 
     if (ssl_option != .None) {
@@ -192,12 +186,21 @@ pub fn build(b: *std.Build) !void {
         .HAVE_X86_64_POPCNTQ = is_amd64,
     });
 
+    const is_gnu: ?u8 = if (target.result.isGnu()) 1 else null;
+    const not_gnu: ?u8 = if (is_gnu == null) 1 else null;
+    // While building with musl, defining _GNU_SOURCE makes musl declare extra things (e.g. struct ucred)
+    lib.root_module.addCMacro("_GNU_SOURCE", "1");
+
+    pg_config.addValues(.{
+        .HAVE_SYNC_FILE_RANGE = is_gnu,
+        .STRERROR_R_INT = not_gnu,
+    });
+
     if (target.result.os.tag == .linux) {
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = 1,
             .HAVE_STRCHRNUL = 1,
             .HAVE_STRINGS_H = 1,
-            .HAVE_SYNC_FILE_RANGE = 1,
             .HAVE_MEMSET_S = null,
             .HAVE_SYS_UCRED_H = null,
         });
@@ -206,7 +209,6 @@ pub fn build(b: *std.Build) !void {
             .HAVE_EXPLICIT_BZERO = null,
             .HAVE_STRCHRNUL = null,
             .HAVE_STRINGS_H = 0,
-            .HAVE_SYNC_FILE_RANGE = null,
             .HAVE_MEMSET_S = 1,
             .HAVE_SYS_UCRED_H = 1,
         });
