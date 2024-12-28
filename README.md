@@ -48,7 +48,7 @@ To update this project dependencies:
 ```bash
 zig fetch --save=upstream git+https://github.com/postgres/postgres#REL_16_4
 zig fetch --save          git+https://github.com/allyourcodebase/openssl#3.3.0
-zig fetch --save          git+https://github.com/allyourcodebase/libressl#3.9.2+1
+zig fetch --save          git+https://github.com/allyourcodebase/libressl#4.0.0+1
 zig fetch --save          git+https://github.com/allyourcodebase/zlib#1.3.1
-zig fetch --save          git+https://github.com/allyourcodebase/zstd#1.5.6-1
+zig fetch --save          git+https://github.com/allyourcodebase/zstd#1.5.6-2
 ```
