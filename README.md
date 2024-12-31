@@ -11,7 +11,7 @@ Provides a package to be used by the zig package manager for C programs.
 
 | Refname    | PostgreSQL version | Zig `0.12.x` | Zig `0.13.x` | Zig `0.14.0-dev` |
 |------------|--------------------|--------------|--------------|------------------|
-| `5.16.4+1` | `REL_16_4`         | ❌           | ✅           | ✅               |
+| `5.16.4+2` | `REL_16_4`         | ❌           | ✅           | ✅               |
 
 ## Use
 
