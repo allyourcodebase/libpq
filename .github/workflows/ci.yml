@@ -18,7 +18,7 @@ jobs:
         os: [ubuntu-latest]
         build-options: ["-Dssl=None -Ddisable-zlib -Ddisable-zstd", "-Dssl=OpenSSL", "-Dssl=LibreSSL"]
         include:
-          - zig-version: "0.13.0"
+          - zig-version: "0.14.0"
             os: ubuntu-latest
             build-options: "-Dssl=None -Ddisable-zlib -Ddisable-zstd"
           #- zig-version: "master"

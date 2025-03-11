@@ -186,7 +186,7 @@ pub fn build(b: *std.Build) !void {
         .HAVE_X86_64_POPCNTQ = is_amd64,
     });
 
-    const is_gnu: ?u8 = if (target.result.isGnu()) 1 else null;
+    const is_gnu: ?u8 = if (target.result.isGnuLibC()) 1 else null;
     const not_gnu: ?u8 = if (is_gnu == null) 1 else null;
     // While building with musl, defining _GNU_SOURCE makes musl declare extra things (e.g. struct ucred)
     lib.root_module.addCMacro("_GNU_SOURCE", "1");
