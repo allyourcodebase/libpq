@@ -205,9 +205,14 @@ pub fn build(b: *std.Build) !void {
             .HAVE_SYS_UCRED_H = null,
         });
     } else if (target.result.os.tag == .macos) {
+        if (target.result.os.isAtLeast(.macos, .{ .major = 15, .minor = 4, .patch = 0 }).?) {
+            pg_config.addValues(.{ .HAVE_STRCHRNUL = 1 });
+        } else {
+            pg_config.addValues(.{ .HAVE_STRCHRNUL = null });
+        }
+
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = null,
-            .HAVE_STRCHRNUL = null,
             .HAVE_STRINGS_H = 0,
             .HAVE_MEMSET_S = 1,
             .HAVE_SYS_UCRED_H = 1,
