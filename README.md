@@ -11,14 +11,15 @@ Provides a package to be used by the zig package manager for C programs.
 
 | Refname    | PostgreSQL version | Zig `0.15.x` | Zig `0.14.x` | Zig `0.13.x` |
 |------------|--------------------|--------------|--------------|--------------|
-| `5.16.4+3` | `REL_16_4`         | ✅           | ✅           | ❌           |
+| `5.16.4+4` | `REL_16_4`         | ✅           | ✅           | ❌           |
+| `5.16.4+3` | `REL_16_4`         | ❌           | ✅           | ❌           |
 | `5.16.4+2` | `REL_16_4`         | ❌           | ❌           | ✅           |
 
 ## Use
 
 Add the dependency in your `build.zig.zon` by running the following command:
 ```zig
-zig fetch --save git+https://github.com/allyourcodebase/libpq#5.16.4+3
+zig fetch --save git+https://github.com/allyourcodebase/libpq#master
 ```
 
 Then, in your `build.zig`:
@@ -49,7 +50,7 @@ To update this project dependencies:
 ```bash
 zig fetch --save=upstream git+https://github.com/postgres/postgres#REL_16_4
 zig fetch --save          git+https://github.com/allyourcodebase/openssl#main
-zig fetch --save          git+https://github.com/allyourcodebase/libressl#4.0.0+2
+zig fetch --save          git+https://github.com/allyourcodebase/libressl#master
 zig fetch --save          git+https://github.com/allyourcodebase/zlib#main
-zig fetch --save          git+https://github.com/allyourcodebase/zstd#1.5.7
+zig fetch --save          git+https://github.com/allyourcodebase/zstd#master
 ```

@@ -23,15 +23,15 @@ pub fn build(b: *std.Build) !void {
     const upstream = b.dependency("upstream", .{ .target = target, .optimize = optimize });
 
     const config_ext = b.addConfigHeader(
-        .{ .style = .{ .autoconf = upstream.path("src/include/pg_config_ext.h.in") }, .include_path = "pg_config_ext.h" },
+        .{ .style = .{ .autoconf_undef = upstream.path("src/include/pg_config_ext.h.in") }, .include_path = "pg_config_ext.h" },
         .{ .PG_INT64_TYPE = .@"long int" },
     );
     const pg_config = b.addConfigHeader(
-        .{ .style = .{ .autoconf = upstream.path("src/include/pg_config.h.in") }, .include_path = "pg_config.h" },
+        .{ .style = .{ .autoconf_undef = upstream.path("src/include/pg_config.h.in") }, .include_path = "pg_config.h" },
         autoconf,
     );
     const config_os = b.addConfigHeader(
-        .{ .style = .{ .autoconf = upstream.path(os_header) }, .include_path = "pg_config_os.h" },
+        .{ .style = .{ .autoconf_at = upstream.path(os_header) }, .include_path = "pg_config_os.h" },
         .{},
     );
     const config_path = b.addConfigHeader(
@@ -39,7 +39,10 @@ pub fn build(b: *std.Build) !void {
         default_paths,
     );
 
-    const lib = b.addStaticLibrary(.{ .name = "pq", .target = target, .optimize = optimize });
+    const lib = b.addLibrary(.{
+        .name = "pq",
+        .root_module = b.createModule(.{ .target = target, .optimize = optimize }),
+    });
 
     lib.addCSourceFiles(.{
         .root = upstream.path(libpq_path),
@@ -252,11 +255,11 @@ pub fn build(b: *std.Build) !void {
     // Build executables to ensure no symbols are left undefined
     const test_step = b.step("examples", "Build example programs");
 
-    const test1 = b.addExecutable(.{ .name = "testlibpq", .target = target, .optimize = optimize });
-    const test2 = b.addExecutable(.{ .name = "testlibpq2", .target = target, .optimize = optimize });
-    const test3 = b.addExecutable(.{ .name = "testlibpq3", .target = target, .optimize = optimize });
-    const test4 = b.addExecutable(.{ .name = "testlibpq4", .target = target, .optimize = optimize });
-    const test5 = b.addExecutable(.{ .name = "testlo", .target = target, .optimize = optimize });
+    const test1 = b.addExecutable(.{ .name = "testlibpq", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+    const test2 = b.addExecutable(.{ .name = "testlibpq2", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+    const test3 = b.addExecutable(.{ .name = "testlibpq3", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+    const test4 = b.addExecutable(.{ .name = "testlibpq4", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+    const test5 = b.addExecutable(.{ .name = "testlo", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
 
     test1.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
     test2.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq2.c"} });
