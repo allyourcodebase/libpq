@@ -226,31 +226,42 @@ pub fn build(b: *std.Build) !void {
         });
     } else return error.ConfigUnknown;
 
-    // Export public headers
+    // Export public headers, the way the Makefile in src/interfaces/libpq does
     lib.installHeadersDirectory(
         upstream.path(libpq_path),
         "",
-        .{ .include_extensions = &.{
-            "libpq-fe.h",
-            "libpq-events.h",
-        } },
+        .{
+            .include_extensions = &.{
+                "libpq-fe.h", // -> "postgres_ext.h" -> "pg_config_ext.h"
+                "libpq-events.h", // -> "libpq-fe.h" -> [...]
+            },
+        },
     );
     lib.installHeadersDirectory(
         upstream.path(libpq_path),
         "postgresql/internal",
-        .{ .include_extensions = &.{
-            "libpq-int.h",
-            "fe-auth-sasl.h",
-            "pqexpbuffer.h",
-        } },
+        .{
+            .include_extensions = &.{
+                // Comment says:
+                // > This file contains internal definitions meant to be used only by the frontend libpq library, not by applications that call it.
+                // > An application can include this file if it wants to bypass the official API defined by libpq-fe.h,
+                // > but code that does so is much more likely to break across PostgreSQL releases than code that uses only the official API.
+                "libpq-int.h", // "lipq-events.h" -> [...] ; "lipq/pqcomm.h" ; "fe-auth-sasl.h" -> [...] ; "pqexpbuffer.h"
+                "fe-auth-sasl.h", // -> "libpq-fe.h" -> [...]
+                "pqexpbuffer.h", // {}
+            },
+        },
     );
-    lib.installHeader(upstream.path("src/include/libpq/libpq-fs.h"), "libpq/libpq-fs.h");
-    lib.installHeader(upstream.path("src/include/libpq/pqcomm.h"), "postgresql/internal/libpq/pqcomm.h");
-    lib.installHeader(upstream.path("src/include/pg_config_manual.h"), "pg_config_manual.h");
-    lib.installHeader(upstream.path("src/include/postgres_ext.h"), "postgres_ext.h");
-    lib.installHeader(upstream.path("src/include/postgres_fe.h"), "postgresql/internal/postgres_fe.h");
-    lib.installHeader(upstream.path("src/include/c.h"), "postgresql/internal/c.h");
-    lib.installHeader(upstream.path("src/include/port.h"), "postgresql/internal/port.h");
+    lib.installHeader(upstream.path("src/include/postgres_ext.h"), "postgres_ext.h"); // -> "pg_config_ext.h" ; included by libpq-fe.h
+    lib.installHeader(upstream.path("src/include/libpq/pqcomm.h"), "postgresql/internal/libpq/pqcomm.h"); // included by libpq-int.h
+
+    lib.installHeader(upstream.path("src/include/libpq/libpq-fs.h"), "libpq/libpq-fs.h"); // included by the textlo examples
+
+    // Comment inside says: "This should be the first file included by PostgreSQL client libraries and application programs"
+    lib.installHeader(upstream.path("src/include/postgres_fe.h"), "postgresql/internal/postgres_fe.h"); // "c.h" -> [...] ; "common/fe_memutils.h"
+    lib.installHeader(upstream.path("src/include/c.h"), "postgresql/internal/c.h"); // "postgres_ext.h" -> [...] ; "pg_config.h" ; "pg_config_manual.h" ; "pg_config_os.h"
+    lib.installHeader(upstream.path("src/include/pg_config_manual.h"), "pg_config_manual.h"); // {}
+    lib.installHeader(upstream.path("src/include/port.h"), "postgresql/internal/port.h"); // {}
 
     // Build executables to ensure no symbols are left undefined
     const test_step = b.step("examples", "Build example programs");
