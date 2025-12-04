@@ -287,6 +287,24 @@ pub fn build(b: *std.Build) !void {
         const install_test = b.addInstallArtifact(t, .{});
         test_step.dependOn(&install_test.step);
     }
+
+    { // Generate zig bindings from C headers
+        const include_all = b.addWriteFile("grpc.h",
+            \\#include <libpq-fe.h>
+            \\#include <libpq-events.h>
+        );
+        const binding = b.addTranslateC(.{
+            .root_source_file = try include_all.getDirectory().join(b.allocator, "grpc.h"),
+            .target = target,
+            .optimize = optimize,
+        });
+        for (config_headers) |header| {
+            binding.addConfigHeader(header);
+        }
+        binding.addIncludePath(upstream.path(libpq_path));
+        binding.addIncludePath(upstream.path("src/include"));
+        _ = binding.addModule("libpq");
+    }
 }
 
 const libpq_sources = .{
