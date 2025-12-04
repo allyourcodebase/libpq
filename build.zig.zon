@@ -9,8 +9,8 @@
             .hash = "N-V-__8AAKeztweKsqUQCZESI7M-Rw2v-1IU1bTHR5SS-px6",
         },
         .openssl = .{
-            .url = "git+https://github.com/allyourcodebase/openssl?ref=main#cad7ccba47e42fa608ca655ec14ae33202df86e1",
-            .hash = "openssl-3.3.2-TC9C3Wa3ZACgB1hZbrLOQCK9XccIBaW_F3imFfIeYP06",
+            .url = "git+https://github.com/allyourcodebase/openssl?ref=main#7d4b2590b3b05fbc0e5cc20e2704a968e63503b1",
+            .hash = "openssl-3.3.2-TC9C3Vy3ZABkts70T3a6QfLYghNUy0tI42ksiW7jRmvd",
             .lazy = true,
         },
         .libressl = .{

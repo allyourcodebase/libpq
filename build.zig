@@ -303,7 +303,8 @@ pub fn build(b: *std.Build) !void {
         }
         binding.addIncludePath(upstream.path(libpq_path));
         binding.addIncludePath(upstream.path("src/include"));
-        _ = binding.addModule("libpq");
+        const bindmod = binding.addModule("libpq");
+        bindmod.linkLibrary(lib);
     }
 }
 

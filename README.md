@@ -7,13 +7,17 @@ Provides a package to be used by the zig package manager for C programs.
 | Architecture \ OS | Linux      | MacOS |
 |:------------------|:-----------|-------|
 | x86_64            | ✅         | ✅    |
-| arm 64            | (untested) | ✅    |
+| arm 64            | (untested) | ✅*   |
 
-| Refname    | PostgreSQL version | Zig `0.15.x` | Zig `0.14.x` | Zig `0.13.x` |
-|------------|--------------------|--------------|--------------|--------------|
-| `5.16.4+4` | `REL_16_4`         | ✅           | ✅           | ❌           |
-| `5.16.4+3` | `REL_16_4`         | ❌           | ✅           | ❌           |
-| `5.16.4+2` | `REL_16_4`         | ❌           | ❌           | ✅           |
+| Refname    | PostgreSQL version | Zig `0.16.x` | Zig `0.15.x` | Zig `0.14.x` | Zig `0.13.x` |
+|------------|--------------------|--------------|--------------|--------------|--------------|
+| `5.16.4+5` | `REL_16_4`         | ✅           | ✅           | ✅           | ❌           |
+| `5.16.4+4` | `REL_16_4`         | ✅*          | ✅           | ✅           | ❌           |
+| `5.16.4+4` | `REL_16_4`         | ✅*          | ✅           | ✅           | ❌           |
+| `5.16.4+3` | `REL_16_4`         | ❌           | ❌           | ✅           | ❌           |
+| `5.16.4+2` | `REL_16_4`         | ❌           | ❌           | ❌           | ✅           |
+
+*: Will not work with OpenSSL
 
 ## Use
 
@@ -25,10 +29,12 @@ zig fetch --save git+https://github.com/allyourcodebase/libpq#master
 Then, in your `build.zig`:
 ```zig
 const postgres = b.dependency("libpq", { .target = target, .optimize = optimize });
-const libpq = postgres.artifact("pq");
 
-// wherever needed:
-exe.linkLibrary(libpq);
+// to use from Zig (since 5.16.4+5):
+mod.addImport("libpq", postgres.module("libpq"));
+
+// to use from C:
+exe.linkLibrary(postgres.artifact("pq"));
 ```
 
 ## Options
