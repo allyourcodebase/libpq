@@ -260,14 +260,16 @@ pub fn build(b: *std.Build) !void {
     const test3 = b.addExecutable(.{ .name = "testlibpq3", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
     const test4 = b.addExecutable(.{ .name = "testlibpq4", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
     const test5 = b.addExecutable(.{ .name = "testlo", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
+    const test6 = b.addExecutable(.{ .name = "testlo64", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
 
     test1.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
     test2.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq2.c"} });
     test3.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq3.c"} });
     test4.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq4.c"} });
     test5.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo.c"} });
+    test6.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo64.c"} });
 
-    const tests = [_]*std.Build.Step.Compile{ test1, test2, test3, test4, test5 };
+    const tests = [_]*std.Build.Step.Compile{ test1, test2, test3, test4, test5, test6 };
     for (tests) |t| {
         t.linkLibC();
         t.linkLibrary(lib);
