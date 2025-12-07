@@ -22,10 +22,6 @@ pub fn build(b: *std.Build) !void {
 
     const upstream = b.dependency("upstream", .{ .target = target, .optimize = optimize });
 
-    const config_ext = b.addConfigHeader(
-        .{ .style = .{ .autoconf_undef = upstream.path("src/include/pg_config_ext.h.in") }, .include_path = "pg_config_ext.h" },
-        .{ .PG_INT64_TYPE = .@"long int" },
-    );
     const pg_config = b.addConfigHeader(
         .{ .style = .{ .autoconf_undef = upstream.path("src/include/pg_config.h.in") }, .include_path = "pg_config.h" },
         autoconf,
@@ -60,7 +56,7 @@ pub fn build(b: *std.Build) !void {
         .flags = &CFLAGS,
     });
 
-    const config_headers = [_]*std.Build.Step.ConfigHeader{ config_ext, pg_config, config_os };
+    const config_headers = [_]*std.Build.Step.ConfigHeader{ pg_config, config_os };
 
     lib.addIncludePath(upstream.path("src/include"));
     lib.addIncludePath(b.path("include"));
@@ -101,15 +97,9 @@ pub fn build(b: *std.Build) !void {
         .OPENSSL_API_COMPAT = .@"0x10001000L",
         .HAVE_LIBCRYPTO = use_ssl,
         .HAVE_LIBSSL = use_ssl,
-        .HAVE_OPENSSL_INIT_SSL = use_ssl,
         .HAVE_SSL_CTX_SET_CERT_CB = use_openssl,
         .HAVE_SSL_CTX_SET_NUM_TICKETS = use_ssl,
         .HAVE_X509_GET_SIGNATURE_INFO = use_openssl,
-        .HAVE_X509_GET_SIGNATURE_NID = use_ssl,
-        .HAVE_BIO_METH_NEW = use_ssl,
-        .HAVE_HMAC_CTX_FREE = use_ssl,
-        .HAVE_HMAC_CTX_NEW = use_ssl,
-        .HAVE_ASN1_STRING_GET0_DATA = use_ssl,
     });
 
     if (ssl_option != .None) {
@@ -126,7 +116,6 @@ pub fn build(b: *std.Build) !void {
             .files = &.{
                 "cryptohash_openssl.c",
                 "hmac_openssl.c",
-                "protocol_openssl.c",
             },
             .flags = &CFLAGS,
         });
@@ -202,22 +191,13 @@ pub fn build(b: *std.Build) !void {
     if (target.result.os.tag == .linux) {
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = 1,
-            .HAVE_STRCHRNUL = 1,
             .HAVE_STRINGS_H = 1,
-            .HAVE_MEMSET_S = null,
             .HAVE_SYS_UCRED_H = null,
         });
     } else if (target.result.os.tag == .macos) {
-        if (target.result.os.isAtLeast(.macos, .{ .major = 15, .minor = 4, .patch = 0 }).?) {
-            pg_config.addValues(.{ .HAVE_STRCHRNUL = 1 });
-        } else {
-            pg_config.addValues(.{ .HAVE_STRCHRNUL = null });
-        }
-
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = null,
             .HAVE_STRINGS_H = 0,
-            .HAVE_MEMSET_S = 1,
             .HAVE_SYS_UCRED_H = 1,
         });
         lib.addCSourceFile(.{
@@ -310,6 +290,7 @@ pub fn build(b: *std.Build) !void {
 
 const libpq_sources = .{
     "fe-auth-scram.c",
+    "fe-cancel.c",
     "fe-connect.c",
     "fe-exec.c",
     "fe-lobj.c",
@@ -326,6 +307,7 @@ const libpq_sources = .{
 
 const libport_sources = .{
     "getpeereid.c",
+    "timingsafe_bcmp.c",
     "pg_crc32c_sb8.c",
     "bsearch_arg.c",
     "chklocale.c",
@@ -333,6 +315,10 @@ const libport_sources = .{
     "noblock.c",
     "path.c",
     "pg_bitutils.c",
+    "pg_localeconv_r.c",
+    "pg_numa.c",
+    "pg_popcount_aarch64.c",
+    "pg_popcount_avx512.c",
     "pg_strong_random.c",
     "pgcheckdir.c",
     "pgmkdirp.c",
@@ -346,12 +332,13 @@ const libport_sources = .{
     "snprintf.c",
     "strerror.c",
     "tar.c",
-    "thread.c",
 };
 
 const common_sources = .{
     "archive.c",
     "base64.c",
+    "binaryheap.c",
+    "blkreftable.c",
     "checksum_helper.c",
     "compression.c",
     "config_info.c",
@@ -369,6 +356,7 @@ const common_sources = .{
     "kwlookup.c",
     "link-canary.c",
     "md5_common.c",
+    "parse_manifest.c",
     "percentrepl.c",
     "pg_get_line.c",
     "pg_lzcompress.c",
@@ -381,6 +369,8 @@ const common_sources = .{
     "scram-common.c",
     "string.c",
     "stringinfo.c",
+    "unicode_case.c",
+    "unicode_category.c",
     "unicode_norm.c",
     "username.c",
     "wait_error.c",
@@ -399,7 +389,7 @@ const CFLAGS = .{
 
     "-Werror",
     "-Wall",
-    "-Wmissing-prototypes",
+    //    "-Wmissing-prototypes",
     "-Wpointer-arith",
     "-Wvla",
     "-Wunguarded-availability-new",
@@ -426,12 +416,12 @@ const default_paths = .{
 const autoconf = .{
     .ALIGNOF_DOUBLE = @alignOf(f64),
     .ALIGNOF_INT = @alignOf(c_int),
+    .ALIGNOF_INT64_T = @alignOf(c_int),
     .ALIGNOF_LONG = @alignOf(c_long),
     .ALIGNOF_PG_INT128_TYPE = @alignOf(i128),
     .ALIGNOF_SHORT = @alignOf(c_short),
     .MAXIMUM_ALIGNOF = @alignOf(c_longlong),
 
-    .SIZEOF_BOOL = @sizeOf(bool),
     .SIZEOF_LONG = @sizeOf(c_long),
     .SIZEOF_OFF_T = @sizeOf(c_long),
     .SIZEOF_SIZE_T = @sizeOf(usize),
@@ -442,9 +432,7 @@ const autoconf = .{
     .DEF_PGPORT = 5432,
     .DEF_PGPORT_STR = "5432",
     .DLSUFFIX = ".so",
-    .ENABLE_THREAD_SAFETY = 1,
     .HAVE_APPEND_HISTORY = 1,
-    .HAVE_ATOMICS = 1,
     .HAVE_BACKTRACE_SYMBOLS = 1,
     .HAVE_COMPUTED_GOTO = 1,
     .HAVE_DECL_FDATASYNC = 1,
@@ -472,11 +460,8 @@ const autoconf = .{
     .HAVE_INTTYPES_H = 1,
     .HAVE_INT_OPTERR = 1,
     .HAVE_INT_TIMEZONE = 1,
-    .HAVE_LANGINFO_H = 1,
     .HAVE_LIBM = 1,
     .HAVE_LIBREADLINE = 1,
-    .HAVE_LOCALE_T = 1,
-    .HAVE_LONG_INT_64 = 1,
     .HAVE_MEMORY_H = 1,
     .HAVE_MKDTEMP = 1,
     .HAVE_POSIX_FADVISE = 1,
@@ -495,8 +480,6 @@ const autoconf = .{
     .HAVE_RL_RESET_SCREEN_SIZE = 1,
     .HAVE_RL_VARIABLE_BIND = 1,
     .HAVE_SOCKLEN_T = 1,
-    .HAVE_SPINLOCKS = 1,
-    .HAVE_STDBOOL_H = 1,
     .HAVE_STDINT_H = 1,
     .HAVE_STDLIB_H = 1,
     .HAVE_STRING_H = 1,
@@ -518,7 +501,6 @@ const autoconf = .{
     .HAVE_UNISTD_H = 1,
     .HAVE_USELOCALE = 1,
     .HAVE_VISIBILITY_ATTRIBUTE = 1,
-    .HAVE__BOOL = 1,
     .HAVE__BUILTIN_BSWAP16 = 1,
     .HAVE__BUILTIN_BSWAP32 = 1,
     .HAVE__BUILTIN_BSWAP64 = 1,
@@ -533,11 +515,8 @@ const autoconf = .{
     .HAVE__STATIC_ASSERT = 1,
     .MEMSET_LOOP_LIMIT = 1024,
     .PG_INT128_TYPE = .__int128,
-    .PG_INT64_TYPE = .@"long int",
     .PG_KRB_SRVNAM = "postgres",
     .PG_PRINTF_ATTRIBUTE = .printf,
-    .INT64_MODIFIER = "l",
-    .PG_USE_STDBOOL = 1,
     .PG_VERSION_NUM = version.major * 10000 + version.minor,
     .RELSEG_SIZE = 131072,
     .STDC_HEADERS = 1,
@@ -563,19 +542,15 @@ const autoconf = .{
     .PG_VERSION_STR = std.fmt.comptimePrint("PostgreSQL {}.{}", .{ version.major, version.minor }),
 
     .AC_APPLE_UNIVERSAL_BUILD = null,
-    .ALIGNOF_LONG_LONG_INT = null,
     .ENABLE_GSS = null,
     .ENABLE_NLS = null,
     .HAVE_ATOMIC_H = null,
     .HAVE_COPYFILE = null,
     .HAVE_COPYFILE_H = null,
+    .HAVE_COPY_FILE_RANGE = 0,
     .HAVE_CRTDEFS_H = null,
-    .HAVE_CRYPTO_LOCK = null,
     .HAVE_DECL_LLVMCREATEGDBREGISTRATIONLISTENER = null,
     .HAVE_DECL_LLVMCREATEPERFJITEVENTLISTENER = null,
-    .HAVE_DECL_LLVMGETHOSTCPUFEATURES = null,
-    .HAVE_DECL_LLVMGETHOSTCPUNAME = null,
-    .HAVE_DECL_LLVMORCGETSYMBOLADDRESSIN = null,
     .HAVE_EDITLINE_HISTORY_H = null,
     .HAVE_EDITLINE_READLINE_H = null,
     .HAVE_GETPEEREID = null,
@@ -585,8 +560,6 @@ const autoconf = .{
     .HAVE_GSSAPI_GSSAPI_H = null,
     .HAVE_GSSAPI_H = null,
     .HAVE_HISTORY_H = null,
-    .HAVE_INT64 = null,
-    .HAVE_INT8 = null,
     .HAVE_INT_OPTRESET = null,
     .HAVE_I_CONSTRAINT__BUILTIN_CONSTANT_P = null,
     .HAVE_KQUEUE = null,
@@ -598,7 +571,6 @@ const autoconf = .{
     .HAVE_LIBWLDAP32 = null,
     .HAVE_LIBXML2 = null,
     .HAVE_LIBXSLT = null,
-    .HAVE_LONG_LONG_INT_64 = null,
     .HAVE_MBARRIER_H = null,
     .HAVE_MBSTOWCS_L = null,
     .HAVE_OSSP_UUID_H = null,
@@ -612,8 +584,6 @@ const autoconf = .{
     .HAVE_SYS_EVENT_H = null,
     .HAVE_SYS_PROCCTL_H = null,
     .HAVE_UCRED_H = null,
-    .HAVE_UINT64 = null,
-    .HAVE_UINT8 = null,
     .HAVE_UNION_SEMUN = null,
     .HAVE_UUID_BSD = null,
     .HAVE_UUID_E2FS = null,
@@ -621,9 +591,7 @@ const autoconf = .{
     .HAVE_UUID_OSSP = null,
     .HAVE_UUID_UUID_H = null,
     .HAVE_WCSTOMBS_L = null,
-    .HAVE__CONFIGTHREADLOCALE = null,
     .HAVE__CPUID = null,
-    .LOCALE_T_IN_XLOCALE = null,
     .PROFILE_PID_DIR = null,
     .PTHREAD_CREATE_JOINABLE = null,
     .USE_ARMV8_CRC32C = null,
@@ -644,11 +612,40 @@ const autoconf = .{
     .USE_SYSV_SEMAPHORES = null,
     .USE_WIN32_SEMAPHORES = null,
     .USE_WIN32_SHARED_MEMORY = null,
-    .WCSTOMBS_L_IN_XLOCALE = null,
     .WORDS_BIGENDIAN = null,
     ._FILE_OFFSET_BITS = null,
     ._LARGEFILE_SOURCE = null,
     ._LARGE_FILES = null,
     .@"inline" = null,
     .typeof = null,
+    // 18_1
+    //
+    .HAVE_DECL_MEMSET_S = null,
+    .HAVE_DECL_STRCHRNUL = 0,
+    .HAVE_DECL_STRSEP = 0,
+    .HAVE_DECL_TIMINGSAFE_BCMP = 0,
+    .HAVE_ELF_AUX_INFO = 0,
+    .HAVE_GETAUXVAL = 0,
+    .HAVE_IO_URING_QUEUE_INIT_MEM = 0,
+    .HAVE_LIBCURL = 0,
+    .HAVE_LIBNUMA = 0,
+    .HAVE_LOCALECONV_L = 0,
+    .HAVE_SSL_CTX_SET_CIPHERSUITES = 0,
+    .HAVE_SSL_CTX_SET_KEYLOG_CALLBACK = 0,
+    .HAVE_STRSEP = 0,
+    .HAVE_THREADSAFE_CURL_GLOBAL_INIT = 0,
+    .HAVE_TIMINGSAFE_BCMP = 0,
+    .HAVE_XLOCALE_H = 1,
+    .HAVE_XSAVE_INTRINSICS = 0,
+    .HAVE__CPUIDEX = 0,
+    .HAVE__GET_CPUID_COUNT = 0,
+    .SIZEOF_LONG_LONG = 0,
+    .USE_AVX512_CRC32C_WITH_RUNTIME_CHECK = 0,
+    .USE_AVX512_POPCNT_WITH_RUNTIME_CHECK = 0,
+    .USE_INJECTION_POINTS = 0,
+    .USE_LIBCURL = 0,
+    .USE_LIBNUMA = 0,
+    .USE_LIBURING = 0,
+    .USE_LOONGARCH_CRC32C = 0,
+    .USE_SVE_POPCNT_WITH_RUNTIME_CHECK = 0,
 };

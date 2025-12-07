@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .upstream = .{
-            .url = "git+https://github.com/postgres/postgres?ref=REL_16_4#2caa85f4aae689e6f6721d7363b4c66a2a6417d6",
-            .hash = "N-V-__8AAKeztweKsqUQCZESI7M-Rw2v-1IU1bTHR5SS-px6",
+            .url = "https://github.com/postgres/postgres/archive/refs/tags/REL_18_1.tar.gz",
+            .hash = "N-V-__8AAFtMXAi66ac6zMPeIBt5tVnTQSyckKgjCq_nZvZo",
         },
         .openssl = .{
             .url = "git+https://github.com/allyourcodebase/openssl?ref=main#7d4b2590b3b05fbc0e5cc20e2704a968e63503b1",
