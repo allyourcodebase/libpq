@@ -188,7 +188,6 @@ pub fn build(b: *std.Build) !void {
     pg_config.addValues(.{
         .HAVE_SYNC_FILE_RANGE = is_gnu,
         .STRERROR_R_INT = not_gnu,
-        .HAVE_XLOCALE_H = 1,
     });
 
     if (target.result.os.tag == .linux) {
@@ -199,6 +198,7 @@ pub fn build(b: *std.Build) !void {
             .HAVE_DECL_MEMSET_S = null,
             .HAVE_SYS_UCRED_H = null,
             .HAVE_SYNCFS = 1,
+            .HAVE_XLOCALE_H = null,
         });
     } else if (target.result.os.tag == .macos) {
         if (target.result.os.isAtLeast(.macos, .{ .major = 15, .minor = 4, .patch = 0 }).?) {
@@ -213,6 +213,7 @@ pub fn build(b: *std.Build) !void {
             .HAVE_DECL_MEMSET_S = 1,
             .HAVE_SYS_UCRED_H = 1,
             .HAVE_SYNCFS = null,
+            .HAVE_XLOCALE_H = 1,
         });
         lib.addCSourceFile(.{
             .file = upstream.path("src/port/explicit_bzero.c"),
