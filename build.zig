@@ -60,8 +60,10 @@ pub fn build(b: *std.Build) !void {
 
     lib.addIncludePath(upstream.path("src/include"));
     lib.addIncludePath(b.path("include"));
+    lib.addIncludePath(upstream.path(libpq_path));
     lib.addConfigHeader(config_path);
     lib.root_module.addCMacro("FRONTEND", "1");
+    lib.root_module.addCMacro("JSONAPI_USE_PQEXPBUFFER", "1");
     lib.linkLibC();
     b.installArtifact(lib);
 
@@ -186,19 +188,31 @@ pub fn build(b: *std.Build) !void {
     pg_config.addValues(.{
         .HAVE_SYNC_FILE_RANGE = is_gnu,
         .STRERROR_R_INT = not_gnu,
+        .HAVE_XLOCALE_H = 1,
     });
 
     if (target.result.os.tag == .linux) {
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = 1,
+            .HAVE_DECL_STRCHRNUL = 1,
             .HAVE_STRINGS_H = 1,
+            .HAVE_DECL_MEMSET_S = null,
             .HAVE_SYS_UCRED_H = null,
+            .HAVE_SYNCFS = 1,
         });
     } else if (target.result.os.tag == .macos) {
+        if (target.result.os.isAtLeast(.macos, .{ .major = 15, .minor = 4, .patch = 0 }).?) {
+            pg_config.addValues(.{ .HAVE_DECL_STRCHRNUL = 1 });
+        } else {
+            pg_config.addValues(.{ .HAVE_DECL_STRCHRNUL = null });
+        }
+
         pg_config.addValues(.{
             .HAVE_EXPLICIT_BZERO = null,
             .HAVE_STRINGS_H = 0,
+            .HAVE_DECL_MEMSET_S = 1,
             .HAVE_SYS_UCRED_H = 1,
+            .HAVE_SYNCFS = null,
         });
         lib.addCSourceFile(.{
             .file = upstream.path("src/port/explicit_bzero.c"),
@@ -216,6 +230,7 @@ pub fn build(b: *std.Build) !void {
         .MAXIMUM_ALIGNOF = target.result.cTypeAlignment(.longlong),
 
         .SIZEOF_LONG = target.result.cTypeByteSize(.long),
+        .SIZEOF_LONG_LONG = target.result.cTypeByteSize(.longlong),
         .SIZEOF_OFF_T = target.result.cTypeByteSize(.long),
         .SIZEOF_SIZE_T = target.result.cTypeByteSize(.ulong),
         .SIZEOF_VOID_P = @sizeOf(*void),
@@ -305,6 +320,7 @@ pub fn build(b: *std.Build) !void {
 
 const libpq_sources = .{
     "fe-auth-scram.c",
+    "fe-auth-oauth.c",
     "fe-cancel.c",
     "fe-connect.c",
     "fe-exec.c",
@@ -490,7 +506,6 @@ const autoconf = .{
     .HAVE_STRSIGNAL = 1,
     .HAVE_STRUCT_OPTION = 1,
     .HAVE_STRUCT_TM_TM_ZONE = 1,
-    .HAVE_SYNCFS = 1,
     .HAVE_SYSLOG = 1,
     .HAVE_SYS_EPOLL_H = 1,
     .HAVE_SYS_PERSONALITY_H = 1,
@@ -620,16 +635,12 @@ const autoconf = .{
     ._LARGE_FILES = null,
     .@"inline" = null,
     .typeof = null,
-    // 18_1
-    //
-    .HAVE_DECL_MEMSET_S = null,
-    .HAVE_DECL_STRCHRNUL = null,
     .HAVE_DECL_STRSEP = null,
     .HAVE_DECL_TIMINGSAFE_BCMP = null,
     .HAVE_ELF_AUX_INFO = null,
     .HAVE_GETAUXVAL = null,
     .HAVE_IO_URING_QUEUE_INIT_MEM = null,
-    .HAVE_LIBCURL = 1,
+    .HAVE_LIBCURL = null,
     .HAVE_LIBNUMA = null,
     .HAVE_LOCALECONV_L = null,
     .HAVE_SSL_CTX_SET_CIPHERSUITES = null,
@@ -637,15 +648,13 @@ const autoconf = .{
     .HAVE_STRSEP = null,
     .HAVE_THREADSAFE_CURL_GLOBAL_INIT = null,
     .HAVE_TIMINGSAFE_BCMP = null,
-    .HAVE_XLOCALE_H = null, // will have this on newer versions of glibc
     .HAVE_XSAVE_INTRINSICS = null,
     .HAVE__CPUIDEX = null,
     .HAVE__GET_CPUID_COUNT = null,
-    .SIZEOF_LONG_LONG = @sizeOf(c_long),
     .USE_AVX512_CRC32C_WITH_RUNTIME_CHECK = null,
     .USE_AVX512_POPCNT_WITH_RUNTIME_CHECK = null,
     .USE_INJECTION_POINTS = null,
-    .USE_LIBCURL = 1,
+    .USE_LIBCURL = null,
     .USE_LIBNUMA = null,
     .USE_LIBURING = null,
     .USE_LOONGARCH_CRC32C = null,
