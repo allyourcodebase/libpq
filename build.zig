@@ -206,6 +206,21 @@ pub fn build(b: *std.Build) !void {
         });
     } else return error.ConfigUnknown;
 
+    pg_config.addValues(.{
+        .ALIGNOF_DOUBLE = target.result.cTypeAlignment(.double),
+        .ALIGNOF_INT = target.result.cTypeAlignment(.int),
+        .ALIGNOF_INT64_T = @alignOf(i64),
+        .ALIGNOF_LONG = target.result.cTypeAlignment(.long),
+        .ALIGNOF_PG_INT128_TYPE = @alignOf(i128),
+        .ALIGNOF_SHORT = target.result.cTypeAlignment(.short),
+        .MAXIMUM_ALIGNOF = target.result.cTypeAlignment(.longlong),
+
+        .SIZEOF_LONG = target.result.cTypeByteSize(.long),
+        .SIZEOF_OFF_T = target.result.cTypeByteSize(.long),
+        .SIZEOF_SIZE_T = target.result.cTypeByteSize(.ulong),
+        .SIZEOF_VOID_P = @sizeOf(*void),
+    });
+
     // Export public headers, the way the Makefile in src/interfaces/libpq does
     lib.installHeadersDirectory(
         upstream.path(libpq_path),
@@ -414,19 +429,6 @@ const default_paths = .{
 };
 
 const autoconf = .{
-    .ALIGNOF_DOUBLE = @alignOf(f64),
-    .ALIGNOF_INT = @alignOf(c_int),
-    .ALIGNOF_INT64_T = @alignOf(c_int),
-    .ALIGNOF_LONG = @alignOf(c_long),
-    .ALIGNOF_PG_INT128_TYPE = @alignOf(i128),
-    .ALIGNOF_SHORT = @alignOf(c_short),
-    .MAXIMUM_ALIGNOF = @alignOf(c_longlong),
-
-    .SIZEOF_LONG = @sizeOf(c_long),
-    .SIZEOF_OFF_T = @sizeOf(c_long),
-    .SIZEOF_SIZE_T = @sizeOf(usize),
-    .SIZEOF_VOID_P = @sizeOf(*void),
-
     .BLCKSZ = 8192,
     .CONFIGURE_ARGS = " '--with-ssl=openssl' 'CC=zig cc' 'CXX=zig c++'",
     .DEF_PGPORT = 5432,
