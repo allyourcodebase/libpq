@@ -154,7 +154,7 @@ pub fn build(b: *std.Build) !void {
         .USE_ZSTD = use_zstd,
     });
 
-    const have_strlcat: bool = target.result.os.tag == .macos; // or linux with glibc >= 2.38, how can I test that ?
+    const have_strlcat: bool = target.result.os.tag == .macos or (target.result.os.tag == .linux and target.result.os.versionRange().gnuLibCVersion().?.order(.{ .major = 2, .minor = 38, .patch = 0 }) == .gt);
     if (!have_strlcat) {
         lib.addCSourceFiles(.{
             .root = upstream.path("src/port"),

@@ -4,18 +4,18 @@ Provides a package to be used by the zig package manager for C programs.
 
 ## Status
 
-| Architecture \ OS | Linux      | MacOS |
-|:------------------|:-----------|-------|
-| x86_64            | ✅         | ✅    |
-| arm 64            | (untested) | ✅*   |
+| Architecture \ OS | Linux      | MacOS                 |
+|:------------------|:-----------|-----------------------|
+| x86_64            | ✅         | ✅                    |
+| arm 64            | (untested) | ✅ (not with OpenSSL) |
 
 | Refname    | PostgreSQL version | Zig `0.16.x` | Zig `0.15.x` | Zig `0.14.x` | Zig `0.13.x` |
 |------------|--------------------|--------------|--------------|--------------|--------------|
+| `5.18.1`   | `REL_18_1`         | ✅           | ✅           | ✅           | ❌           |
 | `5.16.4+5` | `REL_16_4`         | ✅           | ✅           | ✅           | ❌           |
 | `5.16.4+3` | `REL_16_4`         | ❌           | ❌           | ✅           | ❌           |
 | `5.16.4+2` | `REL_16_4`         | ❌           | ❌           | ❌           | ✅           |
 
-*: Will not work with OpenSSL
 
 ## Use
 
