@@ -421,6 +421,7 @@ const CFLAGS = .{
 
     "-Werror",
     "-Wall",
+    "-Wmissing-prototypes",
     "-Wpointer-arith",
     "-Wvla",
     "-Wunguarded-availability-new",
