@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const version = .{ .major = 16, .minor = 4 };
+const version = .{ .major = 18, .minor = 1 };
 const libpq_path = "src/interfaces/libpq";
 
 const ssl_type = enum { OpenSSL, LibreSSL, None };
@@ -421,7 +421,6 @@ const CFLAGS = .{
 
     "-Werror",
     "-Wall",
-    //    "-Wmissing-prototypes",
     "-Wpointer-arith",
     "-Wvla",
     "-Wunguarded-availability-new",
@@ -636,6 +635,8 @@ const autoconf = .{
     ._LARGE_FILES = null,
     .@"inline" = null,
     .typeof = null,
+    .HAVE_DECL_MEMSET_S = null,
+    .HAVE_DECL_STRCHRNUL = null,
     .HAVE_DECL_STRSEP = null,
     .HAVE_DECL_TIMINGSAFE_BCMP = null,
     .HAVE_ELF_AUX_INFO = null,
