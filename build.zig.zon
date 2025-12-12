@@ -1,11 +1,11 @@
 .{
     .name = .libpq,
-    .version = "5.16.4",
+    .version = "5.18.1",
     .fingerprint = 0x9fa0f2ca693ac140,
     .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .upstream = .{
-            .url = "https://github.com/postgres/postgres/archive/refs/tags/REL_18_1.tar.gz",
+            .url = "git+https://github.com/postgres/postgres?ref=REL_18_1#4b324845ba5d24682b9b3708a769f00d160afbd7",
             .hash = "N-V-__8AAFtMXAi66ac6zMPeIBt5tVnTQSyckKgjCq_nZvZo",
         },
         .openssl = .{

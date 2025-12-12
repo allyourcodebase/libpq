@@ -52,7 +52,7 @@ exe.linkLibrary(postgres.artifact("pq"));
 To update this project dependencies:
 
 ```bash
-zig fetch --save=upstream git+https://github.com/postgres/postgres#REL_16_4
+zig fetch --save=upstream git+https://github.com/postgres/postgres#REL_18_1
 zig fetch --save          git+https://github.com/allyourcodebase/openssl#main
 zig fetch --save          git+https://github.com/allyourcodebase/libressl#master
 zig fetch --save          git+https://github.com/allyourcodebase/zlib#main
