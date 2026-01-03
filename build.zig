@@ -34,23 +34,24 @@ pub fn build(b: *std.Build) !void {
         .{ .style = .blank, .include_path = "pg_config_paths.h" },
         default_paths,
     );
-
-    const lib = b.addLibrary(.{
-        .name = "pq",
-        .root_module = b.createModule(.{ .target = target, .optimize = optimize }),
+    const mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
     });
+    const lib = b.addLibrary(.{ .name = "pq", .root_module = mod });
 
-    lib.addCSourceFiles(.{
+    mod.addCSourceFiles(.{
         .root = upstream.path(libpq_path),
         .files = &libpq_sources,
         .flags = &CFLAGS,
     });
-    lib.addCSourceFiles(.{
+    mod.addCSourceFiles(.{
         .root = upstream.path("src/port"),
         .files = &libport_sources,
         .flags = &CFLAGS,
     });
-    lib.addCSourceFiles(.{
+    mod.addCSourceFiles(.{
         .root = upstream.path("src/common"),
         .files = &common_sources,
         .flags = &CFLAGS,
@@ -58,17 +59,16 @@ pub fn build(b: *std.Build) !void {
 
     const config_headers = [_]*std.Build.Step.ConfigHeader{ pg_config, config_os };
 
-    lib.addIncludePath(upstream.path("src/include"));
-    lib.addIncludePath(b.path("include"));
-    lib.addIncludePath(upstream.path(libpq_path));
-    lib.addConfigHeader(config_path);
-    lib.root_module.addCMacro("FRONTEND", "1");
-    lib.root_module.addCMacro("JSONAPI_USE_PQEXPBUFFER", "1");
-    lib.linkLibC();
+    mod.addIncludePath(upstream.path("src/include"));
+    mod.addIncludePath(b.path("include"));
+    mod.addIncludePath(upstream.path(libpq_path));
+    mod.addConfigHeader(config_path);
+    mod.addCMacro("FRONTEND", "1");
+    mod.addCMacro("JSONAPI_USE_PQEXPBUFFER", "1");
     b.installArtifact(lib);
 
     for (config_headers) |header| {
-        lib.addConfigHeader(header);
+        mod.addConfigHeader(header);
         lib.installConfigHeader(header);
     }
 
@@ -81,14 +81,14 @@ pub fn build(b: *std.Build) !void {
             use_openssl = 1;
             if (b.lazyDependency("openssl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
                 const openssl = openssl_dep.artifact("openssl");
-                lib.linkLibrary(openssl);
+                mod.linkLibrary(openssl);
             }
         },
         .LibreSSL => {
             use_ssl = 1;
             if (b.lazyDependency("libressl", .{ .target = target, .optimize = optimize })) |libressl_dep| {
                 const libressl = libressl_dep.artifact("ssl");
-                lib.linkLibrary(libressl);
+                mod.linkLibrary(libressl);
             }
         },
         .None => {},
@@ -105,7 +105,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     if (ssl_option != .None) {
-        lib.addCSourceFiles(.{
+        mod.addCSourceFiles(.{
             .root = upstream.path(libpq_path),
             .files = &.{
                 "fe-secure-common.c",
@@ -113,7 +113,7 @@ pub fn build(b: *std.Build) !void {
             },
             .flags = &CFLAGS,
         });
-        lib.addCSourceFiles(.{
+        mod.addCSourceFiles(.{
             .root = upstream.path("src/common"),
             .files = &.{
                 "cryptohash_openssl.c",
@@ -122,7 +122,7 @@ pub fn build(b: *std.Build) !void {
             .flags = &CFLAGS,
         });
     } else {
-        lib.addCSourceFiles(.{
+        mod.addCSourceFiles(.{
             .root = upstream.path("src/common"),
             .files = &.{
                 "cryptohash.c",
@@ -137,7 +137,7 @@ pub fn build(b: *std.Build) !void {
 
     if (!disable_zlib) {
         if (b.lazyDependency("zlib", .{ .target = target, .optimize = optimize })) |zlib_dep| {
-            lib.linkLibrary(zlib_dep.artifact("z"));
+            mod.linkLibrary(zlib_dep.artifact("z"));
         }
     }
     const use_z: ?u8 = if (disable_zlib) null else 1;
@@ -145,7 +145,7 @@ pub fn build(b: *std.Build) !void {
 
     if (!disable_zstd) {
         if (b.lazyDependency("zstd", .{ .target = target, .optimize = optimize })) |zstd_dep| {
-            lib.linkLibrary(zstd_dep.artifact("zstd"));
+            mod.linkLibrary(zstd_dep.artifact("zstd"));
         }
     }
     const use_zstd: ?u8 = if (disable_zstd) null else 1;
@@ -156,7 +156,7 @@ pub fn build(b: *std.Build) !void {
 
     const have_strlcat: bool = target.result.os.tag == .macos or (target.result.os.tag == .linux and target.result.os.versionRange().gnuLibCVersion().?.order(.{ .major = 2, .minor = 38, .patch = 0 }) == .gt);
     if (!have_strlcat) {
-        lib.addCSourceFiles(.{
+        mod.addCSourceFiles(.{
             .root = upstream.path("src/port"),
             .files = &.{
                 "strlcat.c",
@@ -183,7 +183,7 @@ pub fn build(b: *std.Build) !void {
     const is_gnu: ?u8 = if (target.result.isGnuLibC()) 1 else null;
     const not_gnu: ?u8 = if (is_gnu == null) 1 else null;
     // While building with musl, defining _GNU_SOURCE makes musl declare extra things (e.g. struct ucred)
-    lib.root_module.addCMacro("_GNU_SOURCE", "1");
+    mod.addCMacro("_GNU_SOURCE", "1");
 
     pg_config.addValues(.{
         .HAVE_SYNC_FILE_RANGE = is_gnu,
@@ -215,7 +215,7 @@ pub fn build(b: *std.Build) !void {
             .HAVE_SYNCFS = null,
             .HAVE_XLOCALE_H = 1,
         });
-        lib.addCSourceFile(.{
+        mod.addCSourceFile(.{
             .file = upstream.path("src/port/explicit_bzero.c"),
             .flags = &CFLAGS,
         });
@@ -284,17 +284,17 @@ pub fn build(b: *std.Build) !void {
     const test5 = b.addExecutable(.{ .name = "testlo", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
     const test6 = b.addExecutable(.{ .name = "testlo64", .root_module = b.createModule(.{ .target = target, .optimize = optimize }) });
 
-    test1.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
-    test2.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq2.c"} });
-    test3.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq3.c"} });
-    test4.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq4.c"} });
-    test5.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo.c"} });
-    test6.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo64.c"} });
+    test1.root_module.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq.c"} });
+    test2.root_module.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq2.c"} });
+    test3.root_module.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq3.c"} });
+    test4.root_module.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlibpq4.c"} });
+    test5.root_module.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo.c"} });
+    test6.root_module.addCSourceFiles(.{ .root = upstream.path("src/test/examples"), .files = &.{"testlo64.c"} });
 
     const tests = [_]*std.Build.Step.Compile{ test1, test2, test3, test4, test5, test6 };
     for (tests) |t| {
-        t.linkLibC();
-        t.linkLibrary(lib);
+        t.root_module.link_libc = true;
+        t.root_module.linkLibrary(lib);
         const install_test = b.addInstallArtifact(t, .{});
         test_step.dependOn(&install_test.step);
     }

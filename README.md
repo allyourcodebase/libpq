@@ -11,15 +11,14 @@ Provides a package to be used by the zig package manager for C programs.
 
 | Refname    | PostgreSQL version | Zig `0.16.x` | Zig `0.15.x` | Zig `0.14.x` | Zig `0.13.x` |
 |------------|--------------------|--------------|--------------|--------------|--------------|
-| `5.18.1`   | `REL_18_1`         | ✅           | ✅           | ✅           | ❌           |
-| `5.16.4+5` | `REL_16_4`         | ✅           | ✅           | ✅           | ❌           |
-| `5.16.4+3` | `REL_16_4`         | ❌           | ❌           | ✅           | ❌           |
+| `master`   | `REL_18_1`         | ✅           | ❌           | ❌           | ❌           |
+| `5.18.1+1` | `REL_18_1`         | ❌           | ✅           | ✅           | ❌           |
+| `5.16.4+5` | `REL_16_4`         | ❌           | ✅           | ✅           | ❌           |
 | `5.16.4+2` | `REL_16_4`         | ❌           | ❌           | ❌           | ✅           |
-
 
 ## Use
 
-Add the dependency in your `build.zig.zon` by running the following command:
+Add the dependency to your `build.zig.zon` by running the following command:
 ```zig
 zig fetch --save git+https://github.com/allyourcodebase/libpq#master
 ```

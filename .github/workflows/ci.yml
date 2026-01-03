@@ -18,19 +18,12 @@ jobs:
         os: [ubuntu-latest]
         build-options: ["-Dssl=None -Ddisable-zlib -Ddisable-zstd", "-Dssl=OpenSSL", "-Dssl=LibreSSL"]
         include:
-          # Test for users that want stability and use older kernel, glibc and zig versions
-          - zig-version: "0.14.1"
-            os: ubuntu-22.04 # GLIBC 2.35
-            build-options: "-Dssl=LibreSSL"
-          - zig-version: "0.15.2"
-            os: ubuntu-latest
-            build-options: "-Dssl=None"
           - zig-version: "master"
             os: macos-latest # Apple Silicon
             build-options: "-Dssl=LibreSSL"
-          - zig-version: "master"
-            os: macos-latest-intel
-            build-options: "-Dssl=LibreSSL"
+          # - zig-version: "master"
+          #   os: macos-latest-intel
+          #   build-options: "-Dssl=LibreSSL"
 
     runs-on: ${{ matrix.os }}
 
