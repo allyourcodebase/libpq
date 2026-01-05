@@ -14,8 +14,8 @@
             .lazy = true,
         },
         .libressl = .{
-            .url = "git+https://github.com/allyourcodebase/libressl?ref=zig-0.16#e8f79856c79117d3f90fb9466f07fe40326dc5ea",
-            .hash = "libressl-4.0.0--kqV4CnYAACipI0uyGhRMjpZU1JlcIrtPslSCMO0nLsj",
+            .url = "git+https://github.com/allyourcodebase/libressl?ref=simplify-installheader#de575d3584026c369754562f1330e3103158fa7d",
+            .hash = "libressl-4.0.0--kqV4KPTAACsSRP8mSIZmqgVa5OZjw6WEgvcftWkLu-c",
             .lazy = true,
         },
         .zlib = .{
