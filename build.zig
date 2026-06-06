@@ -1,4 +1,5 @@
 const std = @import("std");
+const libcquery = @import("libcquery");
 
 const version = .{ .major = 18, .minor = 1 };
 const libpq_path = "src/interfaces/libpq";
@@ -8,6 +9,9 @@ const ssl_type = enum { OpenSSL, LibreSSL, None };
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    const features = libcquery.libc_features.detect(target.result);
+    const headers = libcquery.libc_headers.detect(target.result);
 
     const os_header = switch (target.result.os.tag) {
         .linux => "src/include/port/linux.h",
@@ -20,7 +24,7 @@ pub fn build(b: *std.Build) !void {
     const disable_zlib = b.option(bool, "disable-zlib", "Remove zlib as a dependency") orelse false;
     const disable_zstd = b.option(bool, "disable-zstd", "Remove zstd as a dependency") orelse false;
 
-    const upstream = b.dependency("upstream", .{ .target = target, .optimize = optimize });
+    const upstream = b.dependency("upstream", .{});
 
     const pg_config = b.addConfigHeader(
         .{ .style = .{ .autoconf_undef = upstream.path("src/include/pg_config.h.in") }, .include_path = "pg_config.h" },
@@ -154,24 +158,13 @@ pub fn build(b: *std.Build) !void {
         .USE_ZSTD = use_zstd,
     });
 
-    const have_strlcat: bool = target.result.os.tag == .macos or (target.result.os.tag == .linux and target.result.os.versionRange().gnuLibCVersion().?.order(.{ .major = 2, .minor = 38, .patch = 0 }) == .gt);
-    if (!have_strlcat) {
-        mod.addCSourceFiles(.{
-            .root = upstream.path("src/port"),
-            .files = &.{
-                "strlcat.c",
-                "strlcpy.c",
-            },
-            .flags = &CFLAGS,
-        });
-    }
-    const have_decl: u8 = if (have_strlcat) 1 else 0;
-    const have_impl: ?u8 = if (have_strlcat) 1 else null;
+    if (!features.strlcat) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcat.c"), .flags = &CFLAGS });
+    if (!features.strlcpy) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcpy.c"), .flags = &CFLAGS });
     pg_config.addValues(.{
-        .HAVE_DECL_STRLCAT = have_decl,
-        .HAVE_DECL_STRLCPY = have_decl,
-        .HAVE_STRLCAT = have_impl,
-        .HAVE_STRLCPY = have_impl,
+        .HAVE_DECL_STRLCAT = @as(u8, if (features.strlcat) 1 else 0),
+        .HAVE_DECL_STRLCPY = @as(u8, if (features.strlcpy) 1 else 0),
+        .HAVE_STRLCAT = if (features.strlcat) @as(?u8, 1) else null,
+        .HAVE_STRLCPY = if (features.strlcpy) @as(?u8, 1) else null,
     });
 
     const is_amd64: ?u8 = if (target.result.cpu.arch == .x86_64) 1 else null;
@@ -190,36 +183,36 @@ pub fn build(b: *std.Build) !void {
         .STRERROR_R_INT = not_gnu,
     });
 
-    if (target.result.os.tag == .linux) {
-        pg_config.addValues(.{
-            .HAVE_EXPLICIT_BZERO = 1,
-            .HAVE_DECL_STRCHRNUL = 1,
-            .HAVE_STRINGS_H = 1,
-            .HAVE_DECL_MEMSET_S = null,
-            .HAVE_SYS_UCRED_H = null,
-            .HAVE_SYNCFS = 1,
-            .HAVE_XLOCALE_H = null,
-        });
-    } else if (target.result.os.tag == .macos) {
-        if (target.result.os.isAtLeast(.macos, .{ .major = 15, .minor = 4, .patch = 0 }).?) {
-            pg_config.addValues(.{ .HAVE_DECL_STRCHRNUL = 1 });
-        } else {
-            pg_config.addValues(.{ .HAVE_DECL_STRCHRNUL = null });
-        }
-
-        pg_config.addValues(.{
-            .HAVE_EXPLICIT_BZERO = null,
-            .HAVE_STRINGS_H = 0,
-            .HAVE_DECL_MEMSET_S = 1,
-            .HAVE_SYS_UCRED_H = 1,
-            .HAVE_SYNCFS = null,
-            .HAVE_XLOCALE_H = 1,
-        });
-        mod.addCSourceFile(.{
-            .file = upstream.path("src/port/explicit_bzero.c"),
-            .flags = &CFLAGS,
-        });
-    } else return error.ConfigUnknown;
+    pg_config.addValues(.{
+        .HAVE_BACKTRACE_SYMBOLS = if (features.backtrace_symbols) @as(?u8, 1) else null,
+        .HAVE_COPY_FILE_RANGE = if (features.copy_file_range) @as(?u8, 1) else null,
+        .HAVE_COPYFILE = if (features.copyfile) @as(?u8, 1) else null,
+        .HAVE_COPYFILE_H = if (headers.copyfile_h) @as(?u8, 1) else null,
+        .HAVE_DECL_MEMSET_S = if (target.result.os.tag == .macos) @as(?u8, 1) else null, // TODO: add memset_s to libcquery
+        .HAVE_DECL_STRCHRNUL = if (features.strchrnul) @as(?u8, 1) else null,
+        .HAVE_EXECINFO_H = if (headers.execinfo_h) @as(?u8, 1) else null,
+        .HAVE_EXPLICIT_BZERO = if (features.explicit_bzero) @as(?u8, 1) else null,
+        .HAVE_GETAUXVAL = if (features.getauxval) @as(?u8, 1) else null,
+        .HAVE_GETIFADDRS = if (features.getifaddrs) @as(?u8, 1) else null,
+        .HAVE_GETPEEREID = if (features.getpeereid) @as(?u8, 1) else null,
+        .HAVE_KQUEUE = if (headers.sys_event_h) @as(?u8, 1) else null,
+        .HAVE_MKDTEMP = if (features.mkdtemp) @as(?u8, 1) else null,
+        .HAVE_POSIX_FADVISE = if (features.posix_fadvise) @as(?u8, 1) else null,
+        .HAVE_POSIX_FALLOCATE = if (features.posix_fallocate) @as(?u8, 1) else null,
+        .HAVE_PPOLL = if (features.ppoll) @as(?u8, 1) else null,
+        .HAVE_STRINGS_H = if (headers.strings_h) @as(?u8, 1) else null,
+        .HAVE_SYS_EPOLL_H = if (headers.sys_epoll_h) @as(?u8, 1) else null,
+        .HAVE_SYS_EVENT_H = if (headers.sys_event_h) @as(?u8, 1) else null,
+        .HAVE_SYS_PERSONALITY_H = if (headers.sys_personality_h) @as(?u8, 1) else null,
+        .HAVE_SYS_PRCTL_H = if (headers.sys_prctl_h) @as(?u8, 1) else null,
+        .HAVE_SYS_PROCCTL_H = if (headers.sys_procctl_h) @as(?u8, 1) else null,
+        .HAVE_SYS_SIGNALFD_H = if (headers.sys_signalfd_h) @as(?u8, 1) else null,
+        .HAVE_SYS_UCRED_H = if (headers.sys_ucred_h) @as(?u8, 1) else null,
+        .HAVE_SYNCFS = if (features.syncfs) @as(?u8, 1) else null,
+        .HAVE_TIMINGSAFE_BCMP = if (features.timingsafe_bcmp) @as(?u8, 1) else null,
+        .HAVE_XLOCALE_H = if (headers.xlocale_h) @as(?u8, 1) else null,
+    });
+    if (!features.explicit_bzero) mod.addCSourceFile(.{ .file = upstream.path("src/port/explicit_bzero.c"), .flags = &CFLAGS });
 
     pg_config.addValues(.{
         .ALIGNOF_DOUBLE = target.result.cTypeAlignment(.double),
@@ -475,11 +468,7 @@ const autoconf = .{
     .HAVE__STATIC_ASSERT = 1,
     .HAVE_APPEND_HISTORY = 1,
     .HAVE_ATOMIC_H = null,
-    .HAVE_BACKTRACE_SYMBOLS = 1,
     .HAVE_COMPUTED_GOTO = 1,
-    .HAVE_COPY_FILE_RANGE = 0,
-    .HAVE_COPYFILE = null,
-    .HAVE_COPYFILE_H = null,
     .HAVE_CRTDEFS_H = null,
     .HAVE_DECL_F_FULLFSYNC = 0,
     .HAVE_DECL_FDATASYNC = 1,
@@ -494,7 +483,6 @@ const autoconf = .{
     .HAVE_EDITLINE_HISTORY_H = null,
     .HAVE_EDITLINE_READLINE_H = null,
     .HAVE_ELF_AUX_INFO = null,
-    .HAVE_EXECINFO_H = 1,
     .HAVE_FSEEKO = 1,
     .HAVE_GCC__ATOMIC_INT32_CAS = 1,
     .HAVE_GCC__ATOMIC_INT64_CAS = 1,
@@ -502,12 +490,9 @@ const autoconf = .{
     .HAVE_GCC__SYNC_INT32_CAS = 1,
     .HAVE_GCC__SYNC_INT32_TAS = 1,
     .HAVE_GCC__SYNC_INT64_CAS = 1,
-    .HAVE_GETAUXVAL = null,
-    .HAVE_GETIFADDRS = 1,
     .HAVE_GETOPT = 1,
     .HAVE_GETOPT_H = 1,
     .HAVE_GETOPT_LONG = 1,
-    .HAVE_GETPEEREID = null,
     .HAVE_GETPEERUCRED = null,
     .HAVE_GSSAPI_EXT_H = null,
     .HAVE_GSSAPI_GSSAPI_EXT_H = null,
@@ -524,7 +509,6 @@ const autoconf = .{
     .HAVE_INT_TIMEZONE = 1,
     .HAVE_INTTYPES_H = 1,
     .HAVE_IO_URING_QUEUE_INIT_MEM = null,
-    .HAVE_KQUEUE = null,
     .HAVE_LDAP_INITIALIZE = null,
     .HAVE_LIBCURL = null,
     .HAVE_LIBLDAP = null,
@@ -541,12 +525,8 @@ const autoconf = .{
     .HAVE_MBARRIER_H = null,
     .HAVE_MBSTOWCS_L = null,
     .HAVE_MEMORY_H = 1,
-    .HAVE_MKDTEMP = 1,
     .HAVE_OSSP_UUID_H = null,
     .HAVE_PAM_PAM_APPL_H = null,
-    .HAVE_POSIX_FADVISE = 1,
-    .HAVE_POSIX_FALLOCATE = 1,
-    .HAVE_PPOLL = 1,
     .HAVE_PTHREAD = 1,
     .HAVE_PTHREAD_BARRIER_WAIT = 1,
     .HAVE_PTHREAD_IS_THREADED_NP = null,
@@ -577,18 +557,11 @@ const autoconf = .{
     .HAVE_STRUCT_OPTION = 1,
     .HAVE_STRUCT_SOCKADDR_SA_LEN = null,
     .HAVE_STRUCT_TM_TM_ZONE = 1,
-    .HAVE_SYS_EPOLL_H = 1,
-    .HAVE_SYS_EVENT_H = null,
-    .HAVE_SYS_PERSONALITY_H = 1,
-    .HAVE_SYS_PRCTL_H = 1,
-    .HAVE_SYS_PROCCTL_H = null,
-    .HAVE_SYS_SIGNALFD_H = 1,
     .HAVE_SYS_STAT_H = 1,
     .HAVE_SYS_TYPES_H = 1,
     .HAVE_SYSLOG = 1,
     .HAVE_TERMIOS_H = 1,
     .HAVE_THREADSAFE_CURL_GLOBAL_INIT = null,
-    .HAVE_TIMINGSAFE_BCMP = null,
     .HAVE_TYPEOF = 1,
     .HAVE_UCRED_H = null,
     .HAVE_UNION_SEMUN = null,
