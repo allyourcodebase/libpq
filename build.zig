@@ -12,11 +12,17 @@ pub fn build(b: *std.Build) !void {
 
     const features = libcquery.libc_features.detect(target.result);
     const headers = libcquery.libc_headers.detect(target.result);
+    const constants = libcquery.libc_constants.detect(target.result);
+    const types = libcquery.libc_types.detect(target.result);
 
     const os_header = switch (target.result.os.tag) {
         .linux => "src/include/port/linux.h",
         .windows => "src/include/port/win32.h",
         .macos => "src/include/port/darwin.h",
+        .freebsd => "src/include/port/freebsd.h",
+        .openbsd => "src/include/port/openbsd.h",
+        .netbsd => "src/include/port/netbsd.h",
+        .dragonfly => "src/include/port/bsd.h",
         else => return error.OsNotSupported,
     };
 
@@ -173,13 +179,12 @@ pub fn build(b: *std.Build) !void {
         .HAVE_X86_64_POPCNTQ = is_amd64,
     });
 
-    const is_gnu: ?u8 = if (target.result.isGnuLibC()) 1 else null;
-    const not_gnu: ?u8 = if (is_gnu == null) 1 else null;
+    const not_gnu: ?u8 = if (target.result.isGnuLibC()) null else 1;
     // While building with musl, defining _GNU_SOURCE makes musl declare extra things (e.g. struct ucred)
     mod.addCMacro("_GNU_SOURCE", "1");
 
     pg_config.addValues(.{
-        .HAVE_SYNC_FILE_RANGE = is_gnu,
+        .HAVE_SYNC_FILE_RANGE = if (features.sync_file_range) @as(?u8, 1) else null,
         .STRERROR_R_INT = not_gnu,
     });
 
@@ -212,13 +217,28 @@ pub fn build(b: *std.Build) !void {
         .HAVE_STDLIB_H = if (headers.stdlib_h) @as(?u8, 1) else null,
         .HAVE_STRING_H = if (headers.string_h) @as(?u8, 1) else null,
         .HAVE_STRINGS_H = if (headers.strings_h) @as(?u8, 1) else null,
+        .HAVE_ELF_AUX_INFO = if (features.elf_aux_info) @as(?u8, 1) else null,
+        .HAVE_INET_ATON = if (features.inet_aton) @as(?u8, 1) else null,
+        .HAVE_INET_PTON = if (features.inet_pton) @as(?u8, 1) else null,
+        .HAVE_LOCALECONV_L = if (features.localeconv_l) @as(?u8, 1) else null,
+        .HAVE_MBSTOWCS_L = if (features.mbstowcs_l) @as(?u8, 1) else null,
+        .HAVE_SETPROCTITLE = if (features.setproctitle) @as(?u8, 1) else null,
+        .HAVE_STRERROR_R = if (features.strerror_r) @as(?u8, 1) else null,
+        .HAVE_STRUCT_SOCKADDR_SA_LEN = if (types.struct_sockaddr_sa_len) @as(?u8, 1) else null,
+        .HAVE_STRUCT_TM_TM_ZONE = if (types.struct_tm_tm_zone) @as(?u8, 1) else null,
+        .HAVE_USELOCALE = if (features.uselocale) @as(?u8, 1) else null,
+        .HAVE_WCSTOMBS_L = if (features.wcstombs_l) @as(?u8, 1) else null,
         .HAVE_STRNLEN = if (features.strnlen) @as(?u8, 1) else null,
+        .HAVE_DECL_F_FULLFSYNC = @as(u8, if (constants.f_fullfsync) 1 else 0),
         .HAVE_DECL_FDATASYNC = @as(u8, if (features.fdatasync) 1 else 0),
         .HAVE_DECL_POSIX_FADVISE = @as(u8, if (features.posix_fadvise) 1 else 0),
+        .HAVE_DECL_PREADV = @as(u8, if (features.preadv) 1 else 0),
+        .HAVE_DECL_PWRITEV = @as(u8, if (features.pwritev) 1 else 0),
         .HAVE_DECL_STRNLEN = @as(u8, if (features.strnlen) 1 else 0),
         .HAVE_DECL_STRSEP = @as(u8, if (features.strsep) 1 else 0),
         .HAVE_DECL_TIMINGSAFE_BCMP = @as(u8, if (features.timingsafe_bcmp) 1 else 0),
         .HAVE_STRSEP = if (features.strsep) @as(?u8, 1) else null,
+        .HAVE_STRSIGNAL = if (features.strsignal) @as(?u8, 1) else null,
         .HAVE_SYSLOG = if (features.syslog) @as(?u8, 1) else null,
         .HAVE_SYS_EPOLL_H = if (headers.sys_epoll_h) @as(?u8, 1) else null,
         .HAVE_SYS_EVENT_H = if (headers.sys_event_h) @as(?u8, 1) else null,
@@ -491,14 +511,10 @@ const autoconf = .{
     .HAVE__STATIC_ASSERT = 1,
     .HAVE_APPEND_HISTORY = 1,
     .HAVE_COMPUTED_GOTO = 1,
-    .HAVE_DECL_F_FULLFSYNC = 0,
     .HAVE_DECL_LLVMCREATEGDBREGISTRATIONLISTENER = null,
     .HAVE_DECL_LLVMCREATEPERFJITEVENTLISTENER = null,
-    .HAVE_DECL_PREADV = 1,
-    .HAVE_DECL_PWRITEV = 1,
     .HAVE_EDITLINE_HISTORY_H = null,
     .HAVE_EDITLINE_READLINE_H = null,
-    .HAVE_ELF_AUX_INFO = null,
     .HAVE_GCC__ATOMIC_INT32_CAS = 1,
     .HAVE_GCC__ATOMIC_INT64_CAS = 1,
     .HAVE_GCC__SYNC_CHAR_TAS = 1,
@@ -514,8 +530,6 @@ const autoconf = .{
     .HAVE_HISTORY_H = null,
     .HAVE_HISTORY_TRUNCATE_FILE = 1,
     .HAVE_I_CONSTRAINT__BUILTIN_CONSTANT_P = null,
-    .HAVE_INET_ATON = 1,
-    .HAVE_INET_PTON = 1,
     .HAVE_INT_OPTERR = 1,
     .HAVE_INT_OPTRESET = null,
     .HAVE_INT_TIMEZONE = 1,
@@ -532,9 +546,7 @@ const autoconf = .{
     .HAVE_LIBWLDAP32 = null,
     .HAVE_LIBXML2 = null,
     .HAVE_LIBXSLT = null,
-    .HAVE_LOCALECONV_L = null,
     .HAVE_MBARRIER_H = null,
-    .HAVE_MBSTOWCS_L = null,
     .HAVE_OSSP_UUID_H = null,
     .HAVE_PAM_PAM_APPL_H = null,
     .HAVE_PTHREAD = 1,
@@ -552,28 +564,21 @@ const autoconf = .{
     .HAVE_RL_RESET_SCREEN_SIZE = 1,
     .HAVE_RL_VARIABLE_BIND = 1,
     .HAVE_SECURITY_PAM_APPL_H = null,
-    .HAVE_SETPROCTITLE = null,
     .HAVE_SETPROCTITLE_FAST = null,
     .HAVE_SOCKLEN_T = 1,
     .HAVE_SSL_CTX_SET_CIPHERSUITES = null,
     .HAVE_SSL_CTX_SET_KEYLOG_CALLBACK = null,
-    .HAVE_STRERROR_R = 1,
-    .HAVE_STRSIGNAL = 1,
     .HAVE_STRUCT_OPTION = 1,
-    .HAVE_STRUCT_SOCKADDR_SA_LEN = null,
-    .HAVE_STRUCT_TM_TM_ZONE = 1,
     .HAVE_THREADSAFE_CURL_GLOBAL_INIT = null,
     .HAVE_TYPEOF = 1,
     .HAVE_UCRED_H = null,
     .HAVE_UNION_SEMUN = null,
-    .HAVE_USELOCALE = 1,
     .HAVE_UUID_BSD = null,
     .HAVE_UUID_E2FS = null,
     .HAVE_UUID_H = null,
     .HAVE_UUID_OSSP = null,
     .HAVE_UUID_UUID_H = null,
     .HAVE_VISIBILITY_ATTRIBUTE = 1,
-    .HAVE_WCSTOMBS_L = null,
     .HAVE_XSAVE_INTRINSICS = null,
     .MEMSET_LOOP_LIMIT = 1024,
     .PACKAGE_BUGREPORT = "pgsql-bugs@lists.postgresql.org",
