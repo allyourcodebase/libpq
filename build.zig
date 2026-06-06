@@ -16,13 +16,12 @@ pub fn build(b: *std.Build) !void {
     const types = libcquery.libc_types.detect(target.result);
 
     const os_header = switch (target.result.os.tag) {
-        .linux => "src/include/port/linux.h",
-        .windows => "src/include/port/win32.h",
-        .macos => "src/include/port/darwin.h",
         .freebsd => "src/include/port/freebsd.h",
-        .openbsd => "src/include/port/openbsd.h",
+        .linux => "src/include/port/linux.h",
+        .macos => "src/include/port/darwin.h",
         .netbsd => "src/include/port/netbsd.h",
-        .dragonfly => "src/include/port/bsd.h",
+        .openbsd => "src/include/port/openbsd.h",
+        .windows => "src/include/port/win32.h",
         else => return error.OsNotSupported,
     };
 
@@ -33,11 +32,17 @@ pub fn build(b: *std.Build) !void {
     const upstream = b.dependency("upstream", .{});
 
     const pg_config = b.addConfigHeader(
-        .{ .style = .{ .autoconf_undef = upstream.path("src/include/pg_config.h.in") }, .include_path = "pg_config.h" },
+        .{
+            .style = .{ .autoconf_undef = upstream.path("src/include/pg_config.h.in") },
+            .include_path = "pg_config.h",
+        },
         autoconf,
     );
     const config_os = b.addConfigHeader(
-        .{ .style = .{ .autoconf_at = upstream.path(os_header) }, .include_path = "pg_config_os.h" },
+        .{
+            .style = .{ .autoconf_at = upstream.path(os_header) },
+            .include_path = "pg_config_os.h",
+        },
         .{},
     );
     const config_path = b.addConfigHeader(
@@ -164,15 +169,6 @@ pub fn build(b: *std.Build) !void {
         .USE_ZSTD = use_zstd,
     });
 
-    if (!features.strlcat) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcat.c"), .flags = &CFLAGS });
-    if (!features.strlcpy) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcpy.c"), .flags = &CFLAGS });
-    pg_config.addValues(.{
-        .HAVE_DECL_STRLCAT = @as(u8, if (features.strlcat) 1 else 0),
-        .HAVE_DECL_STRLCPY = @as(u8, if (features.strlcpy) 1 else 0),
-        .HAVE_STRLCAT = if (features.strlcat) @as(?u8, 1) else null,
-        .HAVE_STRLCPY = if (features.strlcpy) @as(?u8, 1) else null,
-    });
-
     const is_amd64: ?u8 = if (target.result.cpu.arch == .x86_64) 1 else null;
     pg_config.addValues(.{
         .HAVE__GET_CPUID = is_amd64,
@@ -182,63 +178,66 @@ pub fn build(b: *std.Build) !void {
     const not_gnu: ?u8 = if (target.result.isGnuLibC()) null else 1;
     // While building with musl, defining _GNU_SOURCE makes musl declare extra things (e.g. struct ucred)
     mod.addCMacro("_GNU_SOURCE", "1");
-
     pg_config.addValues(.{
-        .HAVE_SYNC_FILE_RANGE = if (features.sync_file_range) @as(?u8, 1) else null,
         .STRERROR_R_INT = not_gnu,
     });
 
     pg_config.addValues(.{
         .HAVE_ATOMIC_H = if (headers.atomic_h) @as(?u8, 1) else null,
         .HAVE_BACKTRACE_SYMBOLS = if (features.backtrace_symbols) @as(?u8, 1) else null,
-        .HAVE_COPY_FILE_RANGE = if (features.copy_file_range) @as(?u8, 1) else null,
-        .HAVE_CRTDEFS_H = if (headers.crtdefs_h) @as(?u8, 1) else null,
         .HAVE_COPYFILE = if (features.copyfile) @as(?u8, 1) else null,
         .HAVE_COPYFILE_H = if (headers.copyfile_h) @as(?u8, 1) else null,
+        .HAVE_COPY_FILE_RANGE = if (features.copy_file_range) @as(?u8, 1) else null,
+        .HAVE_CRTDEFS_H = if (headers.crtdefs_h) @as(?u8, 1) else null,
+        .HAVE_DECL_FDATASYNC = @as(u8, if (features.fdatasync) 1 else 0),
+        .HAVE_DECL_F_FULLFSYNC = @as(u8, if (constants.f_fullfsync) 1 else 0),
         .HAVE_DECL_MEMSET_S = if (features.memset_s) @as(?u8, 1) else null,
+        .HAVE_DECL_POSIX_FADVISE = @as(u8, if (features.posix_fadvise) 1 else 0),
+        .HAVE_DECL_PREADV = @as(u8, if (features.preadv) 1 else 0),
+        .HAVE_DECL_PWRITEV = @as(u8, if (features.pwritev) 1 else 0),
         .HAVE_DECL_STRCHRNUL = if (features.strchrnul) @as(?u8, 1) else null,
+        .HAVE_DECL_STRLCAT = @as(u8, if (features.strlcat) 1 else 0),
+        .HAVE_DECL_STRLCPY = @as(u8, if (features.strlcpy) 1 else 0),
+        .HAVE_DECL_STRNLEN = @as(u8, if (features.strnlen) 1 else 0),
+        .HAVE_DECL_STRSEP = @as(u8, if (features.strsep) 1 else 0),
+        .HAVE_DECL_TIMINGSAFE_BCMP = @as(u8, if (features.timingsafe_bcmp) 1 else 0),
+        .HAVE_ELF_AUX_INFO = if (features.elf_aux_info) @as(?u8, 1) else null,
         .HAVE_EXECINFO_H = if (headers.execinfo_h) @as(?u8, 1) else null,
         .HAVE_EXPLICIT_BZERO = if (features.explicit_bzero) @as(?u8, 1) else null,
-        .HAVE_GETAUXVAL = if (features.getauxval) @as(?u8, 1) else null,
         .HAVE_FSEEKO = if (features.fseeko) @as(?u8, 1) else null,
+        .HAVE_GETAUXVAL = if (features.getauxval) @as(?u8, 1) else null,
         .HAVE_GETIFADDRS = if (features.getifaddrs) @as(?u8, 1) else null,
         .HAVE_GETOPT = if (features.getopt) @as(?u8, 1) else null,
         .HAVE_GETOPT_H = if (headers.getopt_h) @as(?u8, 1) else null,
         .HAVE_GETPEEREID = if (features.getpeereid) @as(?u8, 1) else null,
         .HAVE_IFADDRS_H = if (features.getifaddrs) @as(?u8, 1) else null,
+        .HAVE_INET_ATON = if (features.inet_aton) @as(?u8, 1) else null,
+        .HAVE_INET_PTON = if (features.inet_pton) @as(?u8, 1) else null,
         .HAVE_INTTYPES_H = if (headers.inttypes_h) @as(?u8, 1) else null,
         .HAVE_KQUEUE = if (headers.sys_event_h) @as(?u8, 1) else null,
+        .HAVE_LOCALECONV_L = if (features.localeconv_l) @as(?u8, 1) else null,
+        .HAVE_MBSTOWCS_L = if (features.mbstowcs_l) @as(?u8, 1) else null,
         .HAVE_MEMORY_H = if (headers.memory_h) @as(?u8, 1) else null,
         .HAVE_MKDTEMP = if (features.mkdtemp) @as(?u8, 1) else null,
         .HAVE_POSIX_FADVISE = if (features.posix_fadvise) @as(?u8, 1) else null,
         .HAVE_POSIX_FALLOCATE = if (features.posix_fallocate) @as(?u8, 1) else null,
         .HAVE_PPOLL = if (features.ppoll) @as(?u8, 1) else null,
+        .HAVE_SETPROCTITLE = if (features.setproctitle) @as(?u8, 1) else null,
+        .HAVE_SOCKLEN_T = if (types.socklen_t) @as(?u8, 1) else null,
         .HAVE_STDINT_H = if (headers.stdint_h) @as(?u8, 1) else null,
         .HAVE_STDLIB_H = if (headers.stdlib_h) @as(?u8, 1) else null,
-        .HAVE_STRING_H = if (headers.string_h) @as(?u8, 1) else null,
-        .HAVE_STRINGS_H = if (headers.strings_h) @as(?u8, 1) else null,
-        .HAVE_ELF_AUX_INFO = if (features.elf_aux_info) @as(?u8, 1) else null,
-        .HAVE_INET_ATON = if (features.inet_aton) @as(?u8, 1) else null,
-        .HAVE_INET_PTON = if (features.inet_pton) @as(?u8, 1) else null,
-        .HAVE_LOCALECONV_L = if (features.localeconv_l) @as(?u8, 1) else null,
-        .HAVE_MBSTOWCS_L = if (features.mbstowcs_l) @as(?u8, 1) else null,
-        .HAVE_SETPROCTITLE = if (features.setproctitle) @as(?u8, 1) else null,
         .HAVE_STRERROR_R = if (features.strerror_r) @as(?u8, 1) else null,
-        .HAVE_STRUCT_SOCKADDR_SA_LEN = if (types.struct_sockaddr_sa_len) @as(?u8, 1) else null,
-        .HAVE_STRUCT_TM_TM_ZONE = if (types.struct_tm_tm_zone) @as(?u8, 1) else null,
-        .HAVE_USELOCALE = if (features.uselocale) @as(?u8, 1) else null,
-        .HAVE_WCSTOMBS_L = if (features.wcstombs_l) @as(?u8, 1) else null,
+        .HAVE_STRINGS_H = if (headers.strings_h) @as(?u8, 1) else null,
+        .HAVE_STRING_H = if (headers.string_h) @as(?u8, 1) else null,
+        .HAVE_STRLCAT = if (features.strlcat) @as(?u8, 1) else null,
+        .HAVE_STRLCPY = if (features.strlcpy) @as(?u8, 1) else null,
         .HAVE_STRNLEN = if (features.strnlen) @as(?u8, 1) else null,
-        .HAVE_DECL_F_FULLFSYNC = @as(u8, if (constants.f_fullfsync) 1 else 0),
-        .HAVE_DECL_FDATASYNC = @as(u8, if (features.fdatasync) 1 else 0),
-        .HAVE_DECL_POSIX_FADVISE = @as(u8, if (features.posix_fadvise) 1 else 0),
-        .HAVE_DECL_PREADV = @as(u8, if (features.preadv) 1 else 0),
-        .HAVE_DECL_PWRITEV = @as(u8, if (features.pwritev) 1 else 0),
-        .HAVE_DECL_STRNLEN = @as(u8, if (features.strnlen) 1 else 0),
-        .HAVE_DECL_STRSEP = @as(u8, if (features.strsep) 1 else 0),
-        .HAVE_DECL_TIMINGSAFE_BCMP = @as(u8, if (features.timingsafe_bcmp) 1 else 0),
         .HAVE_STRSEP = if (features.strsep) @as(?u8, 1) else null,
         .HAVE_STRSIGNAL = if (features.strsignal) @as(?u8, 1) else null,
+        .HAVE_STRUCT_SOCKADDR_SA_LEN = if (types.struct_sockaddr_sa_len) @as(?u8, 1) else null,
+        .HAVE_STRUCT_TM_TM_ZONE = if (types.struct_tm_tm_zone) @as(?u8, 1) else null,
+        .HAVE_SYNCFS = if (features.syncfs) @as(?u8, 1) else null,
+        .HAVE_SYNC_FILE_RANGE = if (features.sync_file_range) @as(?u8, 1) else null,
         .HAVE_SYSLOG = if (features.syslog) @as(?u8, 1) else null,
         .HAVE_SYS_EPOLL_H = if (headers.sys_epoll_h) @as(?u8, 1) else null,
         .HAVE_SYS_EVENT_H = if (headers.sys_event_h) @as(?u8, 1) else null,
@@ -250,12 +249,18 @@ pub fn build(b: *std.Build) !void {
         .HAVE_SYS_TYPES_H = if (headers.sys_types_h) @as(?u8, 1) else null,
         .HAVE_SYS_UCRED_H = if (headers.sys_ucred_h) @as(?u8, 1) else null,
         .HAVE_TERMIOS_H = if (headers.termios_h) @as(?u8, 1) else null,
-        .HAVE_UNISTD_H = if (headers.unistd_h) @as(?u8, 1) else null,
-        .HAVE_SYNCFS = if (features.syncfs) @as(?u8, 1) else null,
         .HAVE_TIMINGSAFE_BCMP = if (features.timingsafe_bcmp) @as(?u8, 1) else null,
+        .HAVE_UNISTD_H = if (headers.unistd_h) @as(?u8, 1) else null,
+        .HAVE_USELOCALE = if (features.uselocale) @as(?u8, 1) else null,
+        .HAVE_UUID_H = if (headers.uuid_h) @as(?u8, 1) else null,
+        .HAVE_UUID_UUID_H = if (headers.uuid_uuid_h) @as(?u8, 1) else null,
+        .HAVE_WCSTOMBS_L = if (features.wcstombs_l) @as(?u8, 1) else null,
         .HAVE_XLOCALE_H = if (headers.xlocale_h) @as(?u8, 1) else null,
+        .WORDS_BIGENDIAN = if (target.result.cpu.arch.endian() == .big) @as(?u8, 1) else null,
     });
     if (!features.explicit_bzero) mod.addCSourceFile(.{ .file = upstream.path("src/port/explicit_bzero.c"), .flags = &CFLAGS });
+    if (!features.strlcat) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcat.c"), .flags = &CFLAGS });
+    if (!features.strlcpy) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcpy.c"), .flags = &CFLAGS });
 
     pg_config.addValues(.{
         .ALIGNOF_DOUBLE = target.result.cTypeAlignment(.double),
@@ -356,8 +361,9 @@ pub fn build(b: *std.Build) !void {
 }
 
 const libpq_sources = .{
-    "fe-auth-scram.c",
     "fe-auth-oauth.c",
+    "fe-auth-scram.c",
+    "fe-auth.c",
     "fe-cancel.c",
     "fe-connect.c",
     "fe-exec.c",
@@ -370,19 +376,17 @@ const libpq_sources = .{
     "legacy-pqsignal.c",
     "libpq-events.c",
     "pqexpbuffer.c",
-    "fe-auth.c",
 };
 
 const libport_sources = .{
-    "getpeereid.c",
-    "timingsafe_bcmp.c",
-    "pg_crc32c_sb8.c",
     "bsearch_arg.c",
     "chklocale.c",
+    "getpeereid.c",
     "inet_net_ntop.c",
     "noblock.c",
     "path.c",
     "pg_bitutils.c",
+    "pg_crc32c_sb8.c",
     "pg_localeconv_r.c",
     "pg_numa.c",
     "pg_popcount_aarch64.c",
@@ -400,6 +404,7 @@ const libport_sources = .{
     "snprintf.c",
     "strerror.c",
     "tar.c",
+    "timingsafe_bcmp.c",
 };
 
 const common_sources = .{
@@ -467,18 +472,18 @@ const CFLAGS = .{
 };
 
 const default_paths = .{
-    .PGBINDIR = "/usr/local/pgsql/bin",
-    .PGSHAREDIR = "/usr/local/pgsql/share",
-    .SYSCONFDIR = "/usr/local/pgsql/etc",
-    .INCLUDEDIR = "/usr/local/pgsql/include",
-    .PKGINCLUDEDIR = "/usr/local/pgsql/include",
-    .INCLUDEDIRSERVER = "/usr/local/pgsql/include/server",
-    .LIBDIR = "/usr/local/pgsql/lib",
-    .PKGLIBDIR = "/usr/local/pgsql/lib",
-    .LOCALEDIR = "/usr/local/pgsql/share/locale",
     .DOCDIR = "/usr/local/pgsql/share/doc/",
     .HTMLDIR = "/usr/local/pgsql/share/doc/",
+    .INCLUDEDIR = "/usr/local/pgsql/include",
+    .INCLUDEDIRSERVER = "/usr/local/pgsql/include/server",
+    .LIBDIR = "/usr/local/pgsql/lib",
+    .LOCALEDIR = "/usr/local/pgsql/share/locale",
     .MANDIR = "/usr/local/pgsql/share/man",
+    .PGBINDIR = "/usr/local/pgsql/bin",
+    .PGSHAREDIR = "/usr/local/pgsql/share",
+    .PKGINCLUDEDIR = "/usr/local/pgsql/include",
+    .PKGLIBDIR = "/usr/local/pgsql/lib",
+    .SYSCONFDIR = "/usr/local/pgsql/etc",
 };
 
 const autoconf = .{
@@ -565,7 +570,6 @@ const autoconf = .{
     .HAVE_RL_VARIABLE_BIND = 1,
     .HAVE_SECURITY_PAM_APPL_H = null,
     .HAVE_SETPROCTITLE_FAST = null,
-    .HAVE_SOCKLEN_T = 1,
     .HAVE_SSL_CTX_SET_CIPHERSUITES = null,
     .HAVE_SSL_CTX_SET_KEYLOG_CALLBACK = null,
     .HAVE_STRUCT_OPTION = 1,
@@ -575,9 +579,7 @@ const autoconf = .{
     .HAVE_UNION_SEMUN = null,
     .HAVE_UUID_BSD = null,
     .HAVE_UUID_E2FS = null,
-    .HAVE_UUID_H = null,
     .HAVE_UUID_OSSP = null,
-    .HAVE_UUID_UUID_H = null,
     .HAVE_VISIBILITY_ATTRIBUTE = 1,
     .HAVE_XSAVE_INTRINSICS = null,
     .MEMSET_LOOP_LIMIT = 1024,
