@@ -259,8 +259,14 @@ pub fn build(b: *std.Build) !void {
         .WORDS_BIGENDIAN = if (target.result.cpu.arch.endian() == .big) @as(?u8, 1) else null,
     });
     if (!features.explicit_bzero) mod.addCSourceFile(.{ .file = upstream.path("src/port/explicit_bzero.c"), .flags = &CFLAGS });
+    if (!features.getpeereid) mod.addCSourceFile(.{ .file = upstream.path("src/port/getpeereid.c"), .flags = &CFLAGS });
+    if (!features.inet_aton) mod.addCSourceFile(.{ .file = upstream.path("src/port/inet_aton.c"), .flags = &CFLAGS });
+    if (!features.mkdtemp) mod.addCSourceFile(.{ .file = upstream.path("src/port/mkdtemp.c"), .flags = &CFLAGS });
     if (!features.strlcat) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcat.c"), .flags = &CFLAGS });
     if (!features.strlcpy) mod.addCSourceFile(.{ .file = upstream.path("src/port/strlcpy.c"), .flags = &CFLAGS });
+    if (!features.strnlen) mod.addCSourceFile(.{ .file = upstream.path("src/port/strnlen.c"), .flags = &CFLAGS });
+    if (!features.strsep) mod.addCSourceFile(.{ .file = upstream.path("src/port/strsep.c"), .flags = &CFLAGS });
+    if (!features.timingsafe_bcmp) mod.addCSourceFile(.{ .file = upstream.path("src/port/timingsafe_bcmp.c"), .flags = &CFLAGS });
 
     pg_config.addValues(.{
         .ALIGNOF_DOUBLE = target.result.cTypeAlignment(.double),
@@ -381,7 +387,6 @@ const libpq_sources = .{
 const libport_sources = .{
     "bsearch_arg.c",
     "chklocale.c",
-    "getpeereid.c",
     "inet_net_ntop.c",
     "noblock.c",
     "path.c",
@@ -404,7 +409,6 @@ const libport_sources = .{
     "snprintf.c",
     "strerror.c",
     "tar.c",
-    "timingsafe_bcmp.c",
 };
 
 const common_sources = .{
