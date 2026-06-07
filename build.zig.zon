@@ -14,8 +14,8 @@
             .lazy = true,
         },
         .libressl = .{
-            .url = "git+https://github.com/allyourcodebase/libressl?ref=simplify-installheader#de575d3584026c369754562f1330e3103158fa7d",
-            .hash = "libressl-4.0.0--kqV4KPTAACsSRP8mSIZmqgVa5OZjw6WEgvcftWkLu-c",
+            .url = "git+https://github.com/allyourcodebase/libressl#8c63fadf71925d74942a847b9a6b3a28930792a3",
+            .hash = "libressl-4.0.0--kqV4FHUAABdqKrbT3i3K-m1m7s_HyZZMMoBpbHjCiNQ",
             .lazy = true,
         },
         .zlib = .{
@@ -27,6 +27,10 @@
             .url = "git+https://github.com/allyourcodebase/zstd?ref=1.5.7-1#e1a501be57f42c541e8a5597e4b59a074dfd09a3",
             .hash = "zstd-1.5.7-1-KEItkAMwAAD6OKY3m0OOmXG7aL-aLUfrDqbP5J5oYapU",
             .lazy = true,
+        },
+        .libcquery = .{
+            .url = "git+https://github.com/agagniere/libc-query#4ed2212a3c764bfcd2ce049eb74ebf8a98a8ebd2",
+            .hash = "libcquery-0.0.1-_2254UjwAACjCLMy400HBJtEjfIc9joSInAMncQJZfRv",
         },
     },
     .paths = .{
