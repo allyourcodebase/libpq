@@ -210,7 +210,7 @@ pub fn build(b: *std.Build) !void {
         .HAVE_GETOPT = if (features.getopt) @as(?u8, 1) else null,
         .HAVE_GETOPT_H = if (headers.getopt_h) @as(?u8, 1) else null,
         .HAVE_GETPEEREID = if (features.getpeereid) @as(?u8, 1) else null,
-        .HAVE_IFADDRS_H = if (features.getifaddrs) @as(?u8, 1) else null,
+        .HAVE_IFADDRS_H = if (headers.ifaddrs_h) @as(?u8, 1) else null,
         .HAVE_INET_ATON = if (features.inet_aton) @as(?u8, 1) else null,
         .HAVE_INET_PTON = if (features.inet_pton) @as(?u8, 1) else null,
         .HAVE_INTTYPES_H = if (headers.inttypes_h) @as(?u8, 1) else null,

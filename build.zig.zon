@@ -29,8 +29,8 @@
             .lazy = true,
         },
         .libcquery = .{
-            .url = "git+https://github.com/agagniere/libc-query#19b9651c5e0008818319b39fcd7199058a3f6335",
-            .hash = "libcquery-0.0.1-_2254djvAABblpDnZxQiPnfMi2c69tW8I7wvbatd1WMy",
+            .url = "git+https://github.com/agagniere/libc-query#4ed2212a3c764bfcd2ce049eb74ebf8a98a8ebd2",
+            .hash = "libcquery-0.0.1-_2254UjwAACjCLMy400HBJtEjfIc9joSInAMncQJZfRv",
         },
     },
     .paths = .{
