@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .upstream = .{
-            .url = "git+https://github.com/postgres/postgres?ref=REL_18_1#4b324845ba5d24682b9b3708a769f00d160afbd7",
-            .hash = "N-V-__8AAFtMXAi66ac6zMPeIBt5tVnTQSyckKgjCq_nZvZo",
+            .url = "git+https://github.com/postgres/postgres?ref=REL_18_2#5a461dc4dbf72a1ec281394a76eb36d68cbdd935",
+            .hash = "N-V-__8AAN7OYwhOPSgJDdRvxvhOrw6S6plTnTbH6nQ3EQio",
         },
         .openssl = .{
             .url = "git+https://github.com/allyourcodebase/openssl?ref=main#0ac677650d43eadf669067d050992118b13338d2",
@@ -14,23 +14,23 @@
             .lazy = true,
         },
         .libressl = .{
-            .url = "git+https://github.com/allyourcodebase/libressl#8c63fadf71925d74942a847b9a6b3a28930792a3",
+            .url = "git+https://github.com/allyourcodebase/libressl?ref=master#8c63fadf71925d74942a847b9a6b3a28930792a3",
             .hash = "libressl-4.0.0--kqV4FHUAABdqKrbT3i3K-m1m7s_HyZZMMoBpbHjCiNQ",
             .lazy = true,
         },
         .zlib = .{
-            .url = "git+https://github.com/allyourcodebase/zlib?ref=main#3599c16d41dbe749ae51b0ff7ab864c61adc779a",
-            .hash = "zlib-1.3.1-ZZQ7lc8NAABUbHzDe_cSWboCqMbrLkVwvFkKnojgeiT2",
+            .url = "git+https://github.com/allyourcodebase/zlib?ref=main#d3b5519d3b73616a6bfece0712f080029d2a9244",
+            .hash = "zlib-1.3.2-ZZQ7lc8NAAAHm9MDfplvwoesXvk4tVm6VCsiI8KnIbT0",
             .lazy = true,
         },
         .zstd = .{
-            .url = "git+https://github.com/allyourcodebase/zstd?ref=1.5.7-1#e1a501be57f42c541e8a5597e4b59a074dfd09a3",
-            .hash = "zstd-1.5.7-1-KEItkAMwAAD6OKY3m0OOmXG7aL-aLUfrDqbP5J5oYapU",
+            .url = "git+https://github.com/allyourcodebase/zstd?ref=master#4ccb01e6fceae86fb9fe36c60b8a103cdc058155",
+            .hash = "zstd-1.5.7-2-KEItkAMwAADNhCbGaImKrjXjnSA51jcqEbGCA3RasVZ9",
             .lazy = true,
         },
         .libcquery = .{
-            .url = "git+https://github.com/agagniere/libc-query#4ed2212a3c764bfcd2ce049eb74ebf8a98a8ebd2",
-            .hash = "libcquery-0.0.1-_2254UjwAACjCLMy400HBJtEjfIc9joSInAMncQJZfRv",
+            .url = "git+https://github.com/agagniere/libc-query#dff18c3b381dfdcd45178fc510f488991263aca7",
+            .hash = "libcquery-0.1.1-_2254XxFAQB6zE9xGH9hJSglKeE80Yq1fgsaNiokLP2v",
         },
     },
     .paths = .{

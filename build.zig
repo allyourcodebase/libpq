@@ -275,7 +275,7 @@ pub fn build(b: *std.Build) !void {
         .ALIGNOF_LONG = target.result.cTypeAlignment(.long),
         .ALIGNOF_PG_INT128_TYPE = @alignOf(i128),
         .ALIGNOF_SHORT = target.result.cTypeAlignment(.short),
-        .MAXIMUM_ALIGNOF = target.result.cTypeAlignment(.longlong),
+        .MAXIMUM_ALIGNOF = @alignOf(i128),
 
         .SIZEOF_LONG = target.result.cTypeByteSize(.long),
         .SIZEOF_LONG_LONG = target.result.cTypeByteSize(.longlong),
