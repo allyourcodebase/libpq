@@ -1,7 +1,7 @@
 const std = @import("std");
 const libcquery = @import("libcquery");
 
-const version = .{ .major = 18, .minor = 1 };
+const version = .{ .major = 18, .minor = 4 };
 const libpq_path = "src/interfaces/libpq";
 
 const ssl_type = enum { OpenSSL, LibreSSL, None };
@@ -174,6 +174,7 @@ pub fn build(b: *std.Build) !void {
         .HAVE__GET_CPUID = is_amd64,
         .HAVE_X86_64_POPCNTQ = is_amd64,
     });
+
 
     const not_gnu: ?u8 = if (target.result.isGnuLibC()) null else 1;
     // While building with musl, defining _GNU_SOURCE makes musl declare extra things (e.g. struct ucred)
@@ -598,7 +599,8 @@ const autoconf = .{
     .PG_MAJORVERSION = std.fmt.comptimePrint("{}", .{version.major}),
     .PG_MAJORVERSION_NUM = version.major,
     .PG_MINORVERSION_NUM = version.minor,
-    .PG_PRINTF_ATTRIBUTE = .printf,
+    .PG_C_PRINTF_ATTRIBUTE = .printf,
+    .PG_CXX_PRINTF_ATTRIBUTE = .printf,
     .pg_restrict = .__restrict,
     .PG_VERSION = std.fmt.comptimePrint("{}.{}", .{ version.major, version.minor }),
     .PG_VERSION_NUM = version.major * 10000 + version.minor,

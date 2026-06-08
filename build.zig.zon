@@ -1,6 +1,6 @@
 .{
     .name = .libpq,
-    .version = "5.18.1",
+    .version = "5.18.4",
     .fingerprint = 0x9fa0f2ca693ac140,
     .minimum_zig_version = "0.14.0",
     .dependencies = .{
