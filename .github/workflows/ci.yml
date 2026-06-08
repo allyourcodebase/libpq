@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        zig-version: ["0.15.2"]
+        zig-version: ["0.16.0"]
         os: [ubuntu-latest]
         build-options: ["-Dssl=None -Ddisable-zlib -Ddisable-zstd", "-Dssl=OpenSSL", "-Dssl=LibreSSL"]
         include:
@@ -22,6 +22,9 @@ jobs:
           - zig-version: "0.14.1"
             os: ubuntu-22.04 # GLIBC 2.35
             build-options: "-Dssl=LibreSSL"
+          - zig-version: "0.15.2"
+            os: ubuntu-latest
+            build-options: "-Dssl=None"
           - zig-version: "master"
             os: ubuntu-latest
             build-options: "-Dssl=LibreSSL"
@@ -44,7 +47,7 @@ jobs:
           version: ${{ matrix.zig-version }}
 
       - name: Run `build`
-        run: zig build ${{ matrix.build-options }} --summary all
+        run: zig build ${{ matrix.build-options }} --summary new
 
       - name: Build example programs
-        run: zig build ${{ matrix.build-options }} examples --summary all
+        run: zig build ${{ matrix.build-options }} examples --summary new

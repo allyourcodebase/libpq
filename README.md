@@ -11,7 +11,7 @@ Provides a package to be used by the zig package manager for C programs.
 
 | Refname    | PostgreSQL version | Zig `0.17-dev` | Zig `0.16.0` | Zig `0.15.x` | Zig `0.14.x` | Zig `0.13.x` |
 |------------|--------------------|----------------|--------------|--------------|--------------|--------------|
-| `5.18.2`   | `REL_18_2`         | ✅             | ✅           | ✅           | ✅           | ❌           |
+| `5.18.3`   | `REL_18_3`         | ✅             | ✅           | ✅           | ✅           | ❌           |
 | `5.16.4+5` | `REL_16_4`         | ❌             | ❌           | ✅           | ✅           | ❌           |
 | `5.16.4+2` | `REL_16_4`         | ❌             | ❌           | ❌           | ❌           | ✅           |
 
@@ -50,7 +50,7 @@ exe.linkLibrary(postgres.artifact("pq"));
 To update this project dependencies:
 
 ```bash
-zig fetch --save=upstream git+https://github.com/postgres/postgres#REL_18_2
+zig fetch --save=upstream git+https://github.com/postgres/postgres#REL_18_3
 zig fetch --save          git+https://github.com/allyourcodebase/openssl#main
 zig fetch --save          git+https://github.com/allyourcodebase/libressl#master
 zig fetch --save          git+https://github.com/allyourcodebase/zlib#main
