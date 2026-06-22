@@ -87,20 +87,17 @@ pub fn build(b: *std.Build) !void {
         lib.installConfigHeader(header);
     }
 
-    var use_openssl: ?u8 = null;
-    var use_ssl: ?u8 = null;
+    const use_ssl = defineIf(ssl_option != .None);
+    const use_openssl = defineIf(ssl_option == .OpenSSL);
 
     switch (ssl_option) {
         .OpenSSL => {
-            use_ssl = 1;
-            use_openssl = 1;
             if (b.lazyDependency("openssl", .{ .target = target, .optimize = optimize })) |openssl_dep| {
                 const openssl = openssl_dep.artifact("openssl");
                 mod.linkLibrary(openssl);
             }
         },
         .LibreSSL => {
-            use_ssl = 1;
             if (b.lazyDependency("libressl", .{ .target = target, .optimize = optimize })) |libressl_dep| {
                 const libressl = libressl_dep.artifact("ssl");
                 mod.linkLibrary(libressl);
@@ -155,109 +152,104 @@ pub fn build(b: *std.Build) !void {
             mod.linkLibrary(zlib_dep.artifact("z"));
         }
     }
-    const use_z: ?u8 = if (disable_zlib) null else 1;
-    pg_config.addValues(.{ .HAVE_LIBZ = use_z });
-
     if (!disable_zstd) {
         if (b.lazyDependency("zstd", .{ .target = target, .optimize = optimize })) |zstd_dep| {
             mod.linkLibrary(zstd_dep.artifact("zstd"));
         }
     }
-    const use_zstd: ?u8 = if (disable_zstd) null else 1;
+    const use_zstd = defineIf(!disable_zstd);
     pg_config.addValues(.{
         .HAVE_LIBZSTD = use_zstd,
         .USE_ZSTD = use_zstd,
     });
 
-    const is_amd64: ?u8 = if (target.result.cpu.arch == .x86_64) 1 else null;
+    const is_amd64 = defineIf(target.result.cpu.arch == .x86_64);
     pg_config.addValues(.{
         .HAVE__GET_CPUID = is_amd64,
         .HAVE_X86_64_POPCNTQ = is_amd64,
     });
 
 
-    const not_gnu: ?u8 = if (target.result.isGnuLibC()) null else 1;
     // While building with musl, defining _GNU_SOURCE makes musl declare extra things (e.g. struct ucred)
     mod.addCMacro("_GNU_SOURCE", "1");
-    pg_config.addValues(.{
-        .STRERROR_R_INT = not_gnu,
-    });
 
     pg_config.addValues(.{
-        .HAVE_ATOMIC_H = if (headers.atomic_h) @as(?u8, 1) else null,
-        .HAVE_BACKTRACE_SYMBOLS = if (features.backtrace_symbols) @as(?u8, 1) else null,
-        .HAVE_COPYFILE = if (features.copyfile) @as(?u8, 1) else null,
-        .HAVE_COPYFILE_H = if (headers.copyfile_h) @as(?u8, 1) else null,
-        .HAVE_COPY_FILE_RANGE = if (features.copy_file_range) @as(?u8, 1) else null,
-        .HAVE_CRTDEFS_H = if (headers.crtdefs_h) @as(?u8, 1) else null,
+        .HAVE_ATOMIC_H = defineIf(headers.atomic_h),
+        .HAVE_BACKTRACE_SYMBOLS = defineIf(features.backtrace_symbols),
+        .HAVE_COPYFILE = defineIf(features.copyfile),
+        .HAVE_COPYFILE_H = defineIf(headers.copyfile_h),
+        .HAVE_COPY_FILE_RANGE = defineIf(features.copy_file_range),
+        .HAVE_CRTDEFS_H = defineIf(headers.crtdefs_h),
         .HAVE_DECL_FDATASYNC = features.fdatasync,
         .HAVE_DECL_F_FULLFSYNC = constants.f_fullfsync,
-        .HAVE_DECL_MEMSET_S = if (features.memset_s) @as(?u8, 1) else null,
+        .HAVE_DECL_MEMSET_S = defineIf(features.memset_s),
         .HAVE_DECL_POSIX_FADVISE = features.posix_fadvise,
         .HAVE_DECL_PREADV = features.preadv,
         .HAVE_DECL_PWRITEV = features.pwritev,
-        .HAVE_DECL_STRCHRNUL = if (features.strchrnul) @as(?u8, 1) else null,
+        .HAVE_DECL_STRCHRNUL = defineIf(features.strchrnul),
         .HAVE_DECL_STRLCAT = features.strlcat,
         .HAVE_DECL_STRLCPY = features.strlcpy,
         .HAVE_DECL_STRNLEN = features.strnlen,
         .HAVE_DECL_STRSEP = features.strsep,
         .HAVE_DECL_TIMINGSAFE_BCMP = features.timingsafe_bcmp,
-        .HAVE_ELF_AUX_INFO = if (features.elf_aux_info) @as(?u8, 1) else null,
-        .HAVE_EXECINFO_H = if (headers.execinfo_h) @as(?u8, 1) else null,
-        .HAVE_EXPLICIT_BZERO = if (features.explicit_bzero) @as(?u8, 1) else null,
-        .HAVE_FSEEKO = if (features.fseeko) @as(?u8, 1) else null,
-        .HAVE_GETAUXVAL = if (features.getauxval) @as(?u8, 1) else null,
-        .HAVE_GETIFADDRS = if (features.getifaddrs) @as(?u8, 1) else null,
-        .HAVE_GETOPT = if (features.getopt) @as(?u8, 1) else null,
-        .HAVE_GETOPT_H = if (headers.getopt_h) @as(?u8, 1) else null,
-        .HAVE_GETPEEREID = if (features.getpeereid) @as(?u8, 1) else null,
-        .HAVE_IFADDRS_H = if (headers.ifaddrs_h) @as(?u8, 1) else null,
-        .HAVE_INET_ATON = if (features.inet_aton) @as(?u8, 1) else null,
-        .HAVE_INET_PTON = if (features.inet_pton) @as(?u8, 1) else null,
-        .HAVE_INTTYPES_H = if (headers.inttypes_h) @as(?u8, 1) else null,
-        .HAVE_KQUEUE = if (headers.sys_event_h) @as(?u8, 1) else null,
-        .HAVE_LOCALECONV_L = if (features.localeconv_l) @as(?u8, 1) else null,
-        .HAVE_MBSTOWCS_L = if (features.mbstowcs_l) @as(?u8, 1) else null,
-        .HAVE_MEMORY_H = if (headers.memory_h) @as(?u8, 1) else null,
-        .HAVE_MKDTEMP = if (features.mkdtemp) @as(?u8, 1) else null,
-        .HAVE_POSIX_FADVISE = if (features.posix_fadvise) @as(?u8, 1) else null,
-        .HAVE_POSIX_FALLOCATE = if (features.posix_fallocate) @as(?u8, 1) else null,
-        .HAVE_PPOLL = if (features.ppoll) @as(?u8, 1) else null,
-        .HAVE_SETPROCTITLE = if (features.setproctitle) @as(?u8, 1) else null,
-        .HAVE_SOCKLEN_T = if (types.socklen_t) @as(?u8, 1) else null,
-        .HAVE_STDINT_H = if (headers.stdint_h) @as(?u8, 1) else null,
-        .HAVE_STDLIB_H = if (headers.stdlib_h) @as(?u8, 1) else null,
-        .HAVE_STRERROR_R = if (features.strerror_r) @as(?u8, 1) else null,
-        .HAVE_STRINGS_H = if (headers.strings_h) @as(?u8, 1) else null,
-        .HAVE_STRING_H = if (headers.string_h) @as(?u8, 1) else null,
-        .HAVE_STRLCAT = if (features.strlcat) @as(?u8, 1) else null,
-        .HAVE_STRLCPY = if (features.strlcpy) @as(?u8, 1) else null,
-        .HAVE_STRNLEN = if (features.strnlen) @as(?u8, 1) else null,
-        .HAVE_STRSEP = if (features.strsep) @as(?u8, 1) else null,
-        .HAVE_STRSIGNAL = if (features.strsignal) @as(?u8, 1) else null,
-        .HAVE_STRUCT_SOCKADDR_SA_LEN = if (types.struct_sockaddr_sa_len) @as(?u8, 1) else null,
-        .HAVE_STRUCT_TM_TM_ZONE = if (types.struct_tm_tm_zone) @as(?u8, 1) else null,
-        .HAVE_SYNCFS = if (features.syncfs) @as(?u8, 1) else null,
-        .HAVE_SYNC_FILE_RANGE = if (features.sync_file_range) @as(?u8, 1) else null,
-        .HAVE_SYSLOG = if (features.syslog) @as(?u8, 1) else null,
-        .HAVE_SYS_EPOLL_H = if (headers.sys_epoll_h) @as(?u8, 1) else null,
-        .HAVE_SYS_EVENT_H = if (headers.sys_event_h) @as(?u8, 1) else null,
-        .HAVE_SYS_PERSONALITY_H = if (headers.sys_personality_h) @as(?u8, 1) else null,
-        .HAVE_SYS_PRCTL_H = if (headers.sys_prctl_h) @as(?u8, 1) else null,
-        .HAVE_SYS_PROCCTL_H = if (headers.sys_procctl_h) @as(?u8, 1) else null,
-        .HAVE_SYS_SIGNALFD_H = if (headers.sys_signalfd_h) @as(?u8, 1) else null,
-        .HAVE_SYS_STAT_H = if (headers.sys_stat_h) @as(?u8, 1) else null,
-        .HAVE_SYS_TYPES_H = if (headers.sys_types_h) @as(?u8, 1) else null,
-        .HAVE_SYS_UCRED_H = if (headers.sys_ucred_h) @as(?u8, 1) else null,
-        .HAVE_TERMIOS_H = if (headers.termios_h) @as(?u8, 1) else null,
-        .HAVE_TIMINGSAFE_BCMP = if (features.timingsafe_bcmp) @as(?u8, 1) else null,
-        .HAVE_UNISTD_H = if (headers.unistd_h) @as(?u8, 1) else null,
-        .HAVE_USELOCALE = if (features.uselocale) @as(?u8, 1) else null,
-        .HAVE_UUID_H = if (headers.uuid_h) @as(?u8, 1) else null,
-        .HAVE_UUID_UUID_H = if (headers.uuid_uuid_h) @as(?u8, 1) else null,
-        .HAVE_WCSTOMBS_L = if (features.wcstombs_l) @as(?u8, 1) else null,
-        .HAVE_XLOCALE_H = if (headers.xlocale_h) @as(?u8, 1) else null,
-        .WORDS_BIGENDIAN = if (target.result.cpu.arch.endian() == .big) @as(?u8, 1) else null,
+        .HAVE_ELF_AUX_INFO = defineIf(features.elf_aux_info),
+        .HAVE_EXECINFO_H = defineIf(headers.execinfo_h),
+        .HAVE_EXPLICIT_BZERO = defineIf(features.explicit_bzero),
+        .HAVE_FSEEKO = defineIf(features.fseeko),
+        .HAVE_GETAUXVAL = defineIf(features.getauxval),
+        .HAVE_GETIFADDRS = defineIf(features.getifaddrs),
+        .HAVE_GETOPT = defineIf(features.getopt),
+        .HAVE_GETOPT_H = defineIf(headers.getopt_h),
+        .HAVE_GETPEEREID = defineIf(features.getpeereid),
+        .HAVE_IFADDRS_H = defineIf(headers.ifaddrs_h),
+        .HAVE_INET_ATON = defineIf(features.inet_aton),
+        .HAVE_INET_PTON = defineIf(features.inet_pton),
+        .HAVE_INTTYPES_H = defineIf(headers.inttypes_h),
+        .HAVE_KQUEUE = defineIf(headers.sys_event_h),
+        .HAVE_LIBZ = defineIf(!disable_zlib),
+        .HAVE_LOCALECONV_L = defineIf(features.localeconv_l),
+        .HAVE_MBSTOWCS_L = defineIf(features.mbstowcs_l),
+        .HAVE_MEMORY_H = defineIf(headers.memory_h),
+        .HAVE_MKDTEMP = defineIf(features.mkdtemp),
+        .HAVE_POSIX_FADVISE = defineIf(features.posix_fadvise),
+        .HAVE_POSIX_FALLOCATE = defineIf(features.posix_fallocate),
+        .HAVE_PPOLL = defineIf(features.ppoll),
+        .HAVE_SETPROCTITLE = defineIf(features.setproctitle),
+        .HAVE_SOCKLEN_T = defineIf(types.socklen_t),
+        .HAVE_STDINT_H = defineIf(headers.stdint_h),
+        .HAVE_STDLIB_H = defineIf(headers.stdlib_h),
+        .HAVE_STRERROR_R = defineIf(features.strerror_r),
+        .HAVE_STRINGS_H = defineIf(headers.strings_h),
+        .HAVE_STRING_H = defineIf(headers.string_h),
+        .HAVE_STRLCAT = defineIf(features.strlcat),
+        .HAVE_STRLCPY = defineIf(features.strlcpy),
+        .HAVE_STRNLEN = defineIf(features.strnlen),
+        .HAVE_STRSEP = defineIf(features.strsep),
+        .HAVE_STRSIGNAL = defineIf(features.strsignal),
+        .HAVE_STRUCT_SOCKADDR_SA_LEN = defineIf(types.struct_sockaddr_sa_len),
+        .HAVE_STRUCT_TM_TM_ZONE = defineIf(types.struct_tm_tm_zone),
+        .HAVE_SYNCFS = defineIf(features.syncfs),
+        .HAVE_SYNC_FILE_RANGE = defineIf(features.sync_file_range),
+        .HAVE_SYSLOG = defineIf(features.syslog),
+        .HAVE_SYS_EPOLL_H = defineIf(headers.sys_epoll_h),
+        .HAVE_SYS_EVENT_H = defineIf(headers.sys_event_h),
+        .HAVE_SYS_PERSONALITY_H = defineIf(headers.sys_personality_h),
+        .HAVE_SYS_PRCTL_H = defineIf(headers.sys_prctl_h),
+        .HAVE_SYS_PROCCTL_H = defineIf(headers.sys_procctl_h),
+        .HAVE_SYS_SIGNALFD_H = defineIf(headers.sys_signalfd_h),
+        .HAVE_SYS_STAT_H = defineIf(headers.sys_stat_h),
+        .HAVE_SYS_TYPES_H = defineIf(headers.sys_types_h),
+        .HAVE_SYS_UCRED_H = defineIf(headers.sys_ucred_h),
+        .HAVE_TERMIOS_H = defineIf(headers.termios_h),
+        .HAVE_TIMINGSAFE_BCMP = defineIf(features.timingsafe_bcmp),
+        .HAVE_UNISTD_H = defineIf(headers.unistd_h),
+        .HAVE_USELOCALE = defineIf(features.uselocale),
+        .HAVE_UUID_H = defineIf(headers.uuid_h),
+        .HAVE_UUID_UUID_H = defineIf(headers.uuid_uuid_h),
+        .HAVE_WCSTOMBS_L = defineIf(features.wcstombs_l),
+        .HAVE_XLOCALE_H = defineIf(headers.xlocale_h),
+        .STRERROR_R_INT = defineIf(!target.result.isGnuLibC()),
+        .WORDS_BIGENDIAN = defineIf(target.result.cpu.arch.endian() == .big),
     });
     if (!features.explicit_bzero) mod.addCSourceFile(.{ .file = upstream.path("src/port/explicit_bzero.c"), .flags = &CFLAGS });
     if (!features.getpeereid) mod.addCSourceFile(.{ .file = upstream.path("src/port/getpeereid.c"), .flags = &CFLAGS });
@@ -365,6 +357,14 @@ pub fn build(b: *std.Build) !void {
         const bindmod = binding.addModule("libpq");
         bindmod.linkLibrary(lib);
     }
+}
+
+/// configHeader maps ?bool: null → `/* #undef FOO */`, true → `#define FOO 1`, false → `#define FOO 0`.
+/// HAVE_* macros follow the autoconf convention of being either defined (1) or absent,
+/// tested with `#ifdef` rather than `#if` to avoid -Wundef warnings.
+/// Passing false directly would emit `#define FOO 0`, making the macro defined — breaking `#ifdef` guards.
+fn defineIf(b: bool) ?bool {
+    return if (b) true else null;
 }
 
 const libpq_sources = .{
